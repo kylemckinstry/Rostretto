@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { Image } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -12,9 +13,29 @@ const Stack = createNativeStackNavigator();
 
 function Tabs() {
   return (
-    <Tab.Navigator screenOptions={{ headerShown: false }}>
-      <Tab.Screen name="Schedule" component={SchedulerScreen} />
-      <Tab.Screen name="Capabilities" component={CapabilitiesScreen} />
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        // color for active label (matches the green icon variant)
+        tabBarActiveTintColor: '#00B392',
+        tabBarInactiveTintColor: '#64748B',
+        // add padding around each tab item and label
+        tabBarItemStyle: { paddingHorizontal: 8, paddingVertical: 6 },
+        tabBarLabelStyle: { paddingBottom: 4, fontSize: 12, fontWeight: '600' },
+        tabBarIcon: ({ focused }) => {
+          // static map of assets to avoid dynamic require
+          const icons: Record<string, { on: any; off: any }> = {
+            Roster: { on: require('../assets/calendar-green.png'), off: require('../assets/calendar.png') },
+            Team: { on: require('../assets/team-green.png'), off: require('../assets/team.png') },
+            Fairness: { on: require('../assets/fairness-green.png'), off: require('../assets/fairness.png') },
+          };
+          const entry = icons[route.name] || icons.Roster;
+          return <Image source={focused ? entry.on : entry.off} style={{ width: 28, height: 28 }} />;
+        },
+      })}
+    >
+      <Tab.Screen name="Roster" component={SchedulerScreen} />
+      <Tab.Screen name="Team" component={CapabilitiesScreen} />
       <Tab.Screen name="Fairness" component={FairnessScreen} />
     </Tab.Navigator>
   );

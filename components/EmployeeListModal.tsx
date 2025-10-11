@@ -10,6 +10,13 @@ const MOCK: Employee[] = [
   { id: '4', name: 'Jason Yay', score: 91 },
 ];
 
+function scoreColor(score?: number) {
+  if (score == null) return { bg: '#D1D5DB', text: '#000' };
+  if (score > 75) return { bg: '#00B392', text: '#fff' };
+  if (score >= 56) return { bg: '#F59E0B', text: '#fff' };
+  return { bg: '#EF4444', text: '#fff' };
+}
+
 export default function EmployeeListModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -30,7 +37,14 @@ export default function EmployeeListModal({ visible, onClose }: { visible: boole
               <Text style={s.name}>{item.name}</Text>
             </View>
             <View style={s.right}>
-              <View style={s.score}><Text style={s.scoreText}>{item.score}</Text></View>
+              {(() => {
+                const sc = scoreColor(item.score);
+                return (
+                  <View style={[s.score, { backgroundColor: sc.bg }]}>
+                    <Text style={[s.scoreText, { color: sc.text }]}>{item.score}</Text>
+                  </View>
+                );
+              })()}
               <Pressable style={s.add}><Text style={{ color: '#059669', fontSize: 18 }}>＋</Text></Pressable>
             </View>
           </View>
@@ -48,7 +62,7 @@ const s = StyleSheet.create({
   avatar: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#E2E8F0' },
   name: { fontWeight: '600', color: '#0F172A' },
   right: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  score: { backgroundColor: '#DBEAFE', paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8 },
-  scoreText: { color: '#1D4ED8', fontWeight: '700' },
+  score: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8 },
+  scoreText: { fontWeight: '700' },
   add: { backgroundColor: '#ECFDF5', paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8 },
 });
