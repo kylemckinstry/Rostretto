@@ -1,10 +1,17 @@
 import * as React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Image, useWindowDimensions, ImageSourcePropType } from 'react-native';
 
-export default function Header({ title }: { title: string }) {
+export default function Header({ title, logo }: { title?: string; logo?: ImageSourcePropType }) {
+  const { width } = useWindowDimensions();
+  const logoWidth = Math.round(width * 0.4);
+
   return (
     <View style={styles.wrap}>
-      <Text style={styles.title}>{title}</Text>
+      {logo ? (
+        <Image source={logo} style={{ width: logoWidth, height: Math.round(logoWidth * 0.28), resizeMode: 'contain' }} />
+      ) : (
+        <Text style={styles.title}>{title}</Text>
+      )}
     </View>
   );
 }

@@ -65,7 +65,7 @@ export default function SchedulerScreen() {
       {/* Set the status bar content color to be visible against the white background */}
       <StatusBar barStyle="dark-content" /> 
 
-      <Header title="Roster" />
+  <Header logo={require('../assets/Rostretto-logo.png')} />
 
       {mode === 'week' ? (
         <WeekView
