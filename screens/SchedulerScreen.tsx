@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { StyleSheet, StatusBar } from 'react-native'; // Added StatusBar import for best practice
+import { StyleSheet, StatusBar, View } from 'react-native';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -9,26 +9,32 @@ import EmployeeListModal from '../components/EmployeeListModal';
 import WeekView from '../components/WeekView';
 import DayView from '../components/DayView';
 
-import { addWeeks, startOfWeek, addDays } from '../utils/date';
+import DateSwitch from '../components/DateSwitch';
+import IndicatorPills from '../components/IndicatorPills';
+
+import {
+  addWeeks,
+  startOfWeek,
+  addDays,
+  isSameDay,
+  weekRangeLabel,
+  dayLabelLong,
+} from '../utils/date';
 import { DayIndicators, Employee } from '../state/types';
 
 export default function SchedulerScreen() {
   const [mode, setMode] = React.useState<'week' | 'day'>('week');
-  const [anchorDate, setAnchorDate] = React.useState(new Date()); // any date within current week
+  const [anchorDate, setAnchorDate] = React.useState(new Date());
   const [selectedDate, setSelectedDate] = React.useState<Date | null>(null);
   const [showModal, setShowModal] = React.useState(false);
 
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
 
-  // Dock the button just above the tab bar.
-  // BUTTON_HEIGHT ~= padding(14*2) + text line height + rounding -> 52 works well with current styles.
-  const BUTTON_HEIGHT = 52;
-  const GAP = 8;
-  // This calculates the correct offset from the bottom of the screen to dock the floating button above the tab bar
-  const bottomOffset = Math.max(insets.bottom + GAP, tabBarHeight - BUTTON_HEIGHT + GAP);
+  // -30 not responsive, but will look for fix later
+  const bottomOffset = insets.bottom -30 ;
 
-  // Mock data for indicators & staff (replace with real state later)
+  // Mock data
   const start = startOfWeek(anchorDate);
   const mkKey = (d: Date) => d.toISOString().slice(0, 10);
   const weekIndicators: Record<string, DayIndicators> = {
@@ -51,49 +57,145 @@ export default function SchedulerScreen() {
   const openDay = (d: Date) => {
     setSelectedDate(d);
     setMode('day');
+    setAnchorDate(d);
   };
 
-  const dayIndicators: DayIndicators = selectedDate
-    ? (weekIndicators[selectedDate.toISOString().slice(0, 10)] as DayIndicators) ||
-      { mismatches: 0, demand: 'Mixed', traffic: 'medium' }
-    : { mismatches: 0, demand: 'Mixed', traffic: 'medium' };
+  const today = new Date();
+  const todayInThisWeek = addDays(
+    start,
+    [0, 1, 2, 3, 4, 5, 6].find(i => isSameDay(addDays(start, i), today)) ?? 0
+  );
+
+  const focusedDate =
+    mode === 'day'
+      ? selectedDate ?? today
+      : (selectedDate && isSameDay(selectedDate, today))
+      ? selectedDate
+      : todayInThisWeek;
+
+  const focusedKey = mkKey(focusedDate);
+  const focusedIndicators: DayIndicators =
+    weekIndicators[focusedKey] ?? { mismatches: 0, demand: 'Mixed', traffic: 'medium' };
+
+  // DateSwitch handlers
+  const granularity: 'weekly' | 'daily' = mode === 'week' ? 'weekly' : 'daily';
+
+  const onGranularityChange = (g: 'weekly' | 'daily') => {
+    if (g === 'daily') {
+      const d = today;
+      setSelectedDate(d);
+      setAnchorDate(d);
+      setMode('day');
+    } else {
+      setMode('week');
+    }
+  };
+
+  const onPrev = () => {
+    if (mode === 'week') {
+      setAnchorDate(d => addWeeks(d, -1));
+    } else {
+      setSelectedDate(d => {
+        const next = addDays(d ?? today, -1);
+        setAnchorDate(next);
+        return next;
+      });
+    }
+  };
+
+  const onNext = () => {
+    if (mode === 'week') {
+      setAnchorDate(d => addWeeks(d, 1));
+    } else {
+      setSelectedDate(d => {
+        const next = addDays(d ?? today, 1);
+        setAnchorDate(next);
+        return next;
+      });
+    }
+  };
+
+  const dateLabel =
+    mode === 'week' ? weekRangeLabel(anchorDate) : dayLabelLong(focusedDate);
+
+  const pillItems = [
+    {
+      label: 'Mismatches',
+      value: String(focusedIndicators.mismatches ?? 0),
+      tone:
+        (focusedIndicators.mismatches ?? 0) > 0
+          ? ('alert' as const)
+          : ('good' as const),
+    },
+    {
+      label: 'Demand',
+      value: focusedIndicators.demand ?? '—',
+      tone: 'warn' as const,
+    },
+    {
+      label: 'Traffic',
+      value:
+        (focusedIndicators.traffic ?? '—')[0].toUpperCase() +
+        (focusedIndicators.traffic ?? '—').slice(1),
+      tone:
+        focusedIndicators.traffic === 'high'
+          ? ('alert' as const)
+          : focusedIndicators.traffic === 'medium'
+          ? ('warn' as const)
+          : ('good' as const),
+    },
+  ];
 
   return (
-    // Removed the explicit edges prop. This allows the SafeAreaView to correctly apply 
-    // the top inset to push content below the camera notch/status bar.
-    <SafeAreaView style={s.safe}>
-      {/* Set the status bar content color to be visible against the white background */}
-      <StatusBar barStyle="dark-content" /> 
+    <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
+      <StatusBar barStyle="dark-content" />
+      <View style={s.content}>
+        <Header logo={require('../assets/Rostretto-logo.png')} />
 
-  <Header logo={require('../assets/Rostretto-logo.png')} />
-
-      {mode === 'week' ? (
-        <WeekView
-          anchorDate={anchorDate}
-          weekIndicators={weekIndicators}
-          staff={staff}
-          onPrevWeek={() => setAnchorDate((d) => addWeeks(d, -1))}
-          onNextWeek={() => setAnchorDate((d) => addWeeks(d, 1))}
-          onSelectDay={openDay}
+        <DateSwitch
+          granularity={granularity}
+          onGranularityChange={onGranularityChange}
         />
-      ) : (
-        <DayView
-          date={selectedDate || new Date()}
-          indicators={dayIndicators}
-          onBack={() => setMode('week')}
-          onOpenEmployees={() => setShowModal(true)}
-        />
-      )}
 
-      {/* Floating Auto Shift button, docked above the tab bar */}
-      <AutoShiftBar onPress={() => setShowModal(true)} floating bottom={bottomOffset} />
+        {mode === 'week' && <IndicatorPills items={pillItems} />}
 
-      <EmployeeListModal visible={showModal} onClose={() => setShowModal(false)} />
+        {mode === 'week' ? (
+          <WeekView
+            anchorDate={anchorDate}
+            weekIndicators={weekIndicators}
+            staff={staff}
+            onPrevWeek={() => setAnchorDate(d => addWeeks(d, -1))}
+            onNextWeek={() => setAnchorDate(d => addWeeks(d, 1))}
+            onSelectDay={openDay}
+          />
+        ) : (
+          <DayView
+            date={focusedDate}
+            indicators={focusedIndicators}
+            onBack={() => setMode('week')}
+            onOpenEmployees={() => setShowModal(true)}
+          />
+        )}
+      </View>
+
+      <AutoShiftBar
+        onPress={() => setShowModal(true)}
+        floating
+        bottom={bottomOffset}
+      />
+
+      <EmployeeListModal
+        visible={showModal}
+        onClose={() => setShowModal(false)}
+      />
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
-  // This makes the screen take up all available space and sets the positioning context for the AutoShiftBar
-  safe: { flex: 1, backgroundColor: '#fff', position: 'relative' }, 
+  safe: { flex: 1, backgroundColor: '#fff', position: 'relative' },
+  content: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
 });

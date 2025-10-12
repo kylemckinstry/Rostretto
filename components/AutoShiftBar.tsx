@@ -22,7 +22,7 @@ export default function AutoShiftBar({ onPress, floating, bottom }: Props) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { padding: 16 },
+  wrap: { padding: 0 },
   floating: {
     position: 'absolute',
     left: 16,

@@ -20,8 +20,8 @@ function Tabs() {
         tabBarActiveTintColor: '#00B392',
         tabBarInactiveTintColor: '#64748B',
         // add padding around each tab item and label
-        tabBarItemStyle: { paddingHorizontal: 8, paddingVertical: 6 },
-        tabBarLabelStyle: { paddingBottom: 4, fontSize: 12, fontWeight: '600' },
+        tabBarItemStyle: { paddingHorizontal: 8, paddingVertical: 4 },
+        tabBarLabelStyle: {fontSize: 12, fontWeight: '600' },
         tabBarIcon: ({ focused }) => {
           // static map of assets to avoid dynamic require
           const icons: Record<string, { on: any; off: any }> = {

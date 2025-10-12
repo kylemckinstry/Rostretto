@@ -5,16 +5,26 @@ type Tone = 'good' | 'warn' | 'alert';
 type Item = { label: string; value: string; tone: Tone };
 
 const tone = {
-  good: { bg: '#ECFDF5', fg: '#059669' },
-  warn: { bg: '#FFFBEB', fg: '#D97706' },
-  alert: { bg: '#FEF2F2', fg: '#DC2626' },
+  good: { fg: '#059669' },
+  warn: { fg: '#D97706' },
+  alert: { fg: '#DC2626' },
 };
 
 export default function IndicatorPills({ items }: { items: Item[] }) {
   return (
     <View style={s.row}>
       {items.map(it => (
-        <View key={it.label} style={[s.pill, { backgroundColor: tone[it.tone].bg }]}>
+        <View 
+          key={it.label} 
+          style={[
+            s.pill, 
+            { 
+              backgroundColor: '#fff', 
+              borderWidth: 1.5, 
+              borderColor: tone[it.tone].fg 
+            }
+          ]}
+        >
           <Text style={[s.value, { color: tone[it.tone].fg }]}>{it.value}</Text>
           <Text style={[s.label, { color: tone[it.tone].fg }]}>{it.label}</Text>
         </View>
