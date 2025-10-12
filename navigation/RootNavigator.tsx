@@ -1,8 +1,11 @@
 import * as React from 'react';
-import { Image } from 'react-native';
+import { Image, View } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import Header from '../components/Header';
 import SchedulerScreen from '../screens/SchedulerScreen';
 import CapabilitiesScreen from '../screens/CapabilitiesScreen';
 import FairnessScreen from '../screens/FairnessScreen';
@@ -11,19 +14,25 @@ import EmployeeScreen from '../screens/EmployeeScreen';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
+function CustomHeader() {
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={{ paddingTop: insets.top, backgroundColor: '#fff' }}>
+      <Header logo={require('../assets/Rostretto-logo.png')} />
+    </View>
+  );
+}
+
 function Tabs() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        // color for active label (matches the green icon variant)
         tabBarActiveTintColor: '#00B392',
         tabBarInactiveTintColor: '#64748B',
-        // add padding around each tab item and label
         tabBarItemStyle: { paddingHorizontal: 8, paddingVertical: 4 },
         tabBarLabelStyle: {fontSize: 12, fontWeight: '600' },
         tabBarIcon: ({ focused }) => {
-          // static map of assets to avoid dynamic require
           const icons: Record<string, { on: any; off: any }> = {
             Roster: { on: require('../assets/calendar-green.png'), off: require('../assets/calendar.png') },
             Team: { on: require('../assets/team-green.png'), off: require('../assets/team.png') },
@@ -49,9 +58,16 @@ export default function RootNavigator() {
         colors: { ...DefaultTheme.colors, background: '#fff' },
       }}
     >
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Root" component={Tabs} />
-        <Stack.Screen name="Employee" component={EmployeeScreen} />
+      <Stack.Navigator>
+        <Stack.Screen
+          name="Root"
+          component={Tabs}
+          options={{
+            header: () => <CustomHeader />,
+            headerShadowVisible: false,
+          }}
+        />
+        <Stack.Screen name="Employee" component={EmployeeScreen} options={{ headerShown: false }}/>
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -3,8 +3,8 @@ import { View, Pressable, Text, StyleSheet, ViewStyle, StyleProp } from 'react-n
 
 type Props = {
   onPress: () => void;
-  floating?: boolean;         // if true, we position absolutely
-  bottom?: number;            // dynamic bottom offset
+  floating?: boolean;  // if true, position absolutely
+  bottom?: number; // dynamic bottom offset
 };
 
 export default function AutoShiftBar({ onPress, floating, bottom }: Props) {

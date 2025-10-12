@@ -5,7 +5,6 @@ import { Employee } from '../state/types';
 export default function AvailableStaffList({ staff }: { staff: Employee[] }) {
   return (
     <View style={s.wrap}>
-      <Text style={s.title}>Available Staff</Text>
       {staff.map(p => (
         <View key={p.id} style={s.row}>
            <View style={[s.initial, { backgroundColor: 'transparent', borderColor: scoreColor(p.score), borderWidth: 2 }]}>
@@ -24,7 +23,7 @@ function colorFor(f?: 'green' | 'yellow' | 'red') {
 }
 
 function scoreColor(score?: number) {
-  if (score == null) return '#D1D5DB'; // gray for unknown
+  if (score == null) return '#D1D5DB'; // grey for unknown
   if (score > 75) return '#00B392'; // green
   if (score >= 56) return '#F59E0B'; // orange
   return '#EF4444'; // red

@@ -1,9 +1,6 @@
 import * as React from 'react';
 import { StyleSheet, StatusBar, View } from 'react-native';
-import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import Header from '../components/Header';
 import AutoShiftBar from '../components/AutoShiftBar';
 import EmployeeListModal from '../components/EmployeeListModal';
 import WeekView from '../components/WeekView';
@@ -32,11 +29,8 @@ export default function SchedulerScreen() {
   const [selectedDate, setSelectedDate] = React.useState<Date | null>(null);
   const [showModal, setShowModal] = React.useState(false);
 
-  const tabBarHeight = useBottomTabBarHeight();
-  const insets = useSafeAreaInsets();
-
-  // Using the empirically determined non-responsive offset for the floating button
-  const bottomOffset = insets.bottom - 30;
+  // bottomOffset for AutoShiftBar
+  const bottomOffset = 16;
 
   // Mock data
   const start = startOfWeek(anchorDate);
@@ -151,16 +145,11 @@ export default function SchedulerScreen() {
   ];
 
   return (
-    <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
+    <View style={{ flex: 1 }}>
       <StatusBar barStyle="dark-content" />
       
-      {/* Container for main content (flex: 1 to fill space) */}
       <View style={{ flex: 1, backgroundColor: '#fff' }}> 
-        
-        {/* Header and DateSwitch need explicit padding to align with views */}
         <View style={PADDED_WRAPPER}>
-          <Header logo={require('../assets/Rostretto-logo.png')} />
-
           <DateSwitch
             key={granularity}
             granularity={granularity}
@@ -168,14 +157,12 @@ export default function SchedulerScreen() {
           />
         </View>
 
-        {/* Indicator Pills need explicit padding */}
         {mode === 'week' && (
           <View style={PADDED_WRAPPER}>
             <IndicatorPills items={pillItems} />
           </View>
         )}
 
-        {/* The main view content (WeekView/DayView) */}
         {mode === 'week' ? (
           <WeekView
             anchorDate={anchorDate}
@@ -194,7 +181,6 @@ export default function SchedulerScreen() {
           />
         )}
       </View>
-      {/* End of main content area */}
 
       <AutoShiftBar
         onPress={() => setShowModal(true)}
@@ -206,7 +192,7 @@ export default function SchedulerScreen() {
         visible={showModal}
         onClose={() => setShowModal(false)}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 

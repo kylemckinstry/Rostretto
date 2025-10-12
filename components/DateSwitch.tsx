@@ -65,7 +65,7 @@ const s = StyleSheet.create({
     overflow: 'hidden',
     marginVertical: 10,
     borderWidth: 1, 
-    borderColor: '#D1D5DB', // Gray border around the whole switch
+    borderColor: '#D1D5DB', // Grey border around the whole switch
   },
   toggle: {
     flex: 1,

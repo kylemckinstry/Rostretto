@@ -53,20 +53,20 @@ export default function DayStackTile({
     // Tile is now narrow and vertically stacked
     <Pressable onPress={() => onPress(date)} style={s.tile}>
       
-      {/* 1. First letter of day (Mon -> M) */}
+      {/* First letter of day (Mon -> M) */}
       <Text style={s.dayText}>{dayLetter}</Text>
       
-      {/* 2. Date number (e.g., 6) */}
+      {/* Date number (e.g., 6) */}
       <Text style={s.dateText}>{dateNumber}</Text>
 
-      {/* 3. Mismatches (Circle badge) */}
+      {/* Mismatches (Circle badge) */}
       <View style={s.stackItem}>
         <View style={[s.mismatchCircle, { backgroundColor: 'transparent', borderColor: mismatchCircleColor, borderWidth: 2 }]}> 
           <Text style={[s.mismatchText, { color: mismatchCircleColor }]}>{mismatches}</Text>
         </View>
       </View>
 
-      {/* 4. Demand Icon (Coffee/Sandwich icon) */}
+      {/* Demand Icon (Coffee/Sandwich icon) */}
       <View style={s.stackItem}>
         <Image 
           source={demandIcon}
@@ -75,7 +75,7 @@ export default function DayStackTile({
         />
       </View>
 
-      {/* 5. Traffic Arrow (Right-facing arrow in a colored circle) */}
+      {/* Traffic Arrow (Right-facing arrow in a colored circle) */}
       <View style={s.stackItem}>
         <View style={[s.trafficCircle, { backgroundColor: 'transparent', borderColor: trafficCircleColor, borderWidth: 2 }]}> 
           <Text style={[s.trafficArrow, { color: trafficCircleColor }]}>{'>'}</Text>
@@ -88,7 +88,6 @@ export default function DayStackTile({
 
 const s = StyleSheet.create({
   tile: {
-    // Narrow width to fit vertical stack
     width: 48, 
     paddingVertical: 10,
     borderRadius: 12,
@@ -101,7 +100,7 @@ const s = StyleSheet.create({
   dayText: { 
     fontSize: 14, 
     fontWeight: '500', 
-    color: '#64748B' // Gray color for the day letter 
+    color: '#64748B'
   },
   dateText: { 
     fontSize: 20, 
@@ -109,7 +108,7 @@ const s = StyleSheet.create({
     marginBottom: 8, // Space before the indicators start
     color: '#0F172A' 
   },
-  // Style for consistent vertical spacing of indicator items
+  // Styles for consistent vertical spacing of indicator items
   stackItem: {
     height: 30, // Ensures even vertical spacing regardless of content height
     justifyContent: 'center',
@@ -117,7 +116,7 @@ const s = StyleSheet.create({
     marginVertical: 2,
   },
   
-  // MISMATCHES (Similar style to available staff's initial circle)
+  // Mimsatches (Similar style to available staff's initial circle)
   mismatchCircle: {
     width: 20,
     height: 20,
@@ -132,15 +131,14 @@ const s = StyleSheet.create({
     color: '#fff',
   },
   
-  // DEMAND ICON
+  // Demand ICON
   demandIcon: {
     width: 20,
     height: 20,
     resizeMode: 'contain',
-    // Background of the icon is assumed to be handled by the asset itself
   },
   
-  // TRAFFIC CIRCLE
+  // Traffic circle
   trafficCircle: {
     width: 22,
     height: 22,

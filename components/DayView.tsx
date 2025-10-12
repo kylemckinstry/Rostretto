@@ -74,7 +74,7 @@ export default function DayView({
 
   return (
     <View style={s.container}>
-      {/* STATIC CONTENT WRAPPER: This applies paddingHorizontal: 16 to the Header and Pills */}
+      {/*This applies paddingHorizontal: 16 to the Header and Pills */}
       <View style={s.staticWrap}>
         {/* Date Header */}
         <View style={s.header}>
@@ -113,7 +113,7 @@ const s = StyleSheet.create({
     flex: 1, 
     paddingBottom: 0, 
   },
-  // WRAPPER STYLE: Applies uniform horizontal padding (16px) to the top section.
+  // Applies uniform horizontal padding (16px) to the top section.
   staticWrap: {
     paddingHorizontal: 16,
   },
@@ -128,13 +128,13 @@ const s = StyleSheet.create({
     fontSize: 16, 
     fontWeight: '700' 
   },
-  // NEW STYLE: Wrapper for the Pressable area for the chevron
+  // Wrapper for the Pressable area for the chevron
   chevronBox: {
     padding: 8, 
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // UPDATED STYLE: Creates the circular button visual
+  // Creates the circular button visual
   chev: { 
     fontSize: 14, 
     width: 24, 
