@@ -27,9 +27,9 @@ export default function WeekView({
   return (
     <View style={s.container}>
       <View style={s.header}>
-        <Pressable onPress={onPrevWeek}><Text style={s.chev}>{'<'}</Text></Pressable>
+        <Pressable onPress={onPrevWeek} style={s.chevronBox}><Text style={s.chev}>{'<'}</Text></Pressable>
         <Text style={s.title}>{label}</Text>
-        <Pressable onPress={onNextWeek}><Text style={s.chev}>{'>'}</Text></Pressable>
+        <Pressable onPress={onNextWeek} style={s.chevronBox}><Text style={s.chev}>{'>'}</Text></Pressable>
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 8 }}>
@@ -49,5 +49,20 @@ const s = StyleSheet.create({
   container: { paddingHorizontal: 16, paddingVertical: 8 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
   title: { fontSize: 16, fontWeight: '700' },
-  chev: { fontSize: 18, padding: 8 },
+  chevronBox: {
+    padding: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chev: {
+    fontSize: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    textAlign: 'center',
+    lineHeight: 22,
+    color: '#0F172A',
+  },
 });

@@ -22,6 +22,10 @@ import {
 } from '../utils/date';
 import { DayIndicators, Employee } from '../state/types';
 
+// Style for padding the elements that need 16px horizontal spacing
+const PADDED_WRAPPER = { paddingHorizontal: 16 };
+
+
 export default function SchedulerScreen() {
   const [mode, setMode] = React.useState<'week' | 'day'>('week');
   const [anchorDate, setAnchorDate] = React.useState(new Date());
@@ -31,7 +35,7 @@ export default function SchedulerScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
 
-  // -30 not responsive, but will look for fix later
+  // Using the empirically determined non-responsive offset for the floating button
   const bottomOffset = insets.bottom - 30;
 
   // Mock data
@@ -149,18 +153,29 @@ export default function SchedulerScreen() {
   return (
     <SafeAreaView style={s.safe} edges={['top', 'bottom']}>
       <StatusBar barStyle="dark-content" />
-      <View style={s.content}>
-        <Header logo={require('../assets/Rostretto-logo.png')} />
+      
+      {/* Container for main content (flex: 1 to fill space) */}
+      <View style={{ flex: 1, backgroundColor: '#fff' }}> 
+        
+        {/* Header and DateSwitch need explicit padding to align with views */}
+        <View style={PADDED_WRAPPER}>
+          <Header logo={require('../assets/Rostretto-logo.png')} />
 
-        <DateSwitch
-          // Forces component re-render when granularity changes to ensure
-          key={granularity}
-          granularity={granularity}
-          onGranularityChange={onGranularityChange}
-        />
+          <DateSwitch
+            key={granularity}
+            granularity={granularity}
+            onGranularityChange={onGranularityChange}
+          />
+        </View>
 
-        {mode === 'week' && <IndicatorPills items={pillItems} />}
+        {/* Indicator Pills need explicit padding */}
+        {mode === 'week' && (
+          <View style={PADDED_WRAPPER}>
+            <IndicatorPills items={pillItems} />
+          </View>
+        )}
 
+        {/* The main view content (WeekView/DayView) */}
         {mode === 'week' ? (
           <WeekView
             anchorDate={anchorDate}
@@ -179,6 +194,7 @@ export default function SchedulerScreen() {
           />
         )}
       </View>
+      {/* End of main content area */}
 
       <AutoShiftBar
         onPress={() => setShowModal(true)}
@@ -196,8 +212,4 @@ export default function SchedulerScreen() {
 
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#fff', position: 'relative' },
-  content: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
 });

@@ -33,7 +33,7 @@ export function weekRangeLabel(anchor: Date): string {
 }
 
 export function dayLabelLong(d: Date): string {
-  const wd = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()];
+  const wd = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d.getDay()];
   const m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
   return `${wd}, ${m} ${d.getDate()}`;
 }
