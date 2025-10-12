@@ -32,7 +32,7 @@ export default function SchedulerScreen() {
   const insets = useSafeAreaInsets();
 
   // -30 not responsive, but will look for fix later
-  const bottomOffset = insets.bottom -30 ;
+  const bottomOffset = insets.bottom - 30;
 
   // Mock data
   const start = startOfWeek(anchorDate);
@@ -70,8 +70,8 @@ export default function SchedulerScreen() {
     mode === 'day'
       ? selectedDate ?? today
       : (selectedDate && isSameDay(selectedDate, today))
-      ? selectedDate
-      : todayInThisWeek;
+        ? selectedDate
+        : todayInThisWeek;
 
   const focusedKey = mkKey(focusedDate);
   const focusedIndicators: DayIndicators =
@@ -141,8 +141,8 @@ export default function SchedulerScreen() {
         focusedIndicators.traffic === 'high'
           ? ('alert' as const)
           : focusedIndicators.traffic === 'medium'
-          ? ('warn' as const)
-          : ('good' as const),
+            ? ('warn' as const)
+            : ('good' as const),
     },
   ];
 
@@ -153,6 +153,8 @@ export default function SchedulerScreen() {
         <Header logo={require('../assets/Rostretto-logo.png')} />
 
         <DateSwitch
+          // Forces component re-render when granularity changes to ensure
+          key={granularity}
           granularity={granularity}
           onGranularityChange={onGranularityChange}
         />

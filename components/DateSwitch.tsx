@@ -1,6 +1,10 @@
 import * as React from 'react';
 import { View, Text, StyleSheet, Pressable, Dimensions } from 'react-native';
 
+// Define the inactive background color for clarity
+const INACTIVE_BG = '#F1F5F9'; 
+const ACTIVE_BG = '#E0F2FE';
+
 export default function DateSwitch({
   granularity,
   onGranularityChange,
@@ -9,26 +13,41 @@ export default function DateSwitch({
   onGranularityChange: (g: 'weekly' | 'daily') => void;
 }) {
   const screenWidth = Dimensions.get('window').width;
-  const toggleWidth = screenWidth * 0.8; // 80% of screen width
+  const toggleWidth = screenWidth * 0.92; 
+
+  // Function to determine the style for each button
+  const getStyle = (currentGranularity: 'weekly' | 'daily') => {
+      const isActive = granularity === currentGranularity;
+      
+      return [
+          s.toggle, 
+          // Use a full object override to guarantee the background color is set last
+          { backgroundColor: isActive ? ACTIVE_BG : INACTIVE_BG } 
+      ];
+  };
 
   return (
     <View style={[s.wrap, { width: toggleWidth }]}>
       <Pressable
         onPress={() => onGranularityChange('weekly')}
-        style={[s.toggle, granularity === 'weekly' && s.toggleActive]}
+        style={getStyle('weekly')} // Apply guaranteed style
         android_ripple={{ color: '#e0f2fe' }}
       >
-        <Text style={[s.toggleText, granularity === 'weekly' && s.toggleTextActive]}>
+        <Text 
+          style={[s.toggleText, granularity === 'weekly' && s.toggleTextActive]}
+        >
           Weekly
         </Text>
       </Pressable>
 
       <Pressable
         onPress={() => onGranularityChange('daily')}
-        style={[s.toggle, granularity === 'daily' && s.toggleActive]}
+        style={getStyle('daily')} // Apply guaranteed style
         android_ripple={{ color: '#e0f2fe' }}
       >
-        <Text style={[s.toggleText, granularity === 'daily' && s.toggleTextActive]}>
+        <Text 
+          style={[s.toggleText, granularity === 'daily' && s.toggleTextActive]}
+        >
           Daily
         </Text>
       </Pressable>
@@ -41,18 +60,17 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignSelf: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: 'transparent', // Transparent container
     borderRadius: 10,
     overflow: 'hidden',
     marginVertical: 10,
+    borderWidth: 1, 
+    borderColor: '#D1D5DB', // Gray border around the whole switch
   },
   toggle: {
     flex: 1,
     alignItems: 'center',
     paddingVertical: 10,
-  },
-  toggleActive: {
-    backgroundColor: '#E0F2FE',
   },
   toggleText: {
     color: '#475569',
@@ -60,6 +78,6 @@ const s = StyleSheet.create({
     fontSize: 14,
   },
   toggleTextActive: {
-    color: '#0284C7',
+    color: '#118AB2',
   },
 });
