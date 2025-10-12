@@ -1,109 +1,85 @@
-import * as app from 'firebase/app';
-import * as firestore from 'firebase/firestore';
-import * as auth from 'firebase/auth';
+import { initializeApp } from 'firebase/app';
+import { getFirestore, Firestore, collection, CollectionReference, DocumentData } from 'firebase/firestore';
+import { initializeAuth, Auth, signInAnonymously } from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 
-// --- Type and Configuration Retrieval ---
+// Module-level variables to hold service instances
+let _db: Firestore | null = null;
+let _auth: Auth | null = null;
 
-declare const __firebase_config: string;
-declare const __initial_auth_token: string;
+// Configuration and Initialization
 
-let _db: firestore.Firestore | null = null;
-let _auth: auth.Auth | null = null;
-const APP_ID = 'rostretto-app'; // Your Firebase Project ID
+const APP_ID = Constants.expoConfig?.extra?.projectId as string;
 
-/**
- * Retrieves the Firebase configuration, prioritizing the secure global environment 
- * variable over the local fallback file for security during deployment.
- */
-const getFirebaseConfig = () => {
-    try {
-        // Attempt to use the secure, injected global configuration string
-        if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-            // console.log("Using secure environment config.");
-            return JSON.parse(__firebase_config);
-        }
-    } catch (e) {
-        console.warn("Could not parse __firebase_config. Falling back to local file.");
-    }
-    
-    // Fallback: Use the local firebase.json file during development
-    try {
-        // NOTE: Path assumes firebase.ts is in src/services and firebase.json is in project root.
-        const localConfig = require('../../firebase.json');
-        return localConfig;
-    } catch (e) {
-        console.error("Local firebase.json not found or failed to load. Ensure it exists in the project root.");
-        throw new Error("Could not initialize Firebase services.");
-    }
-};
+// Initializes Firebase services if they haven't been already.
 
-
-// --- Initialization Function ---
-
-/**
- * Initializes Firebase services (App, Auth, Firestore) and authenticates the user.
- */
 export const initializeFirebase = async () => {
-    if (_db) return; // Already initialized
+  if (_db) return; // Already initialized
 
-    const firebaseConfig = getFirebaseConfig();
-    
-    // Initialize Firebase App
-    const firebaseApp = app.initializeApp(firebaseConfig);
+  const firebaseConfig = {
+    apiKey: Constants.expoConfig?.extra?.apiKey,
+    authDomain: Constants.expoConfig?.extra?.authDomain,
+    projectId: Constants.expoConfig?.extra?.projectId,
+    storageBucket: Constants.expoConfig?.extra?.storageBucket,
+    messagingSenderId: Constants.expoConfig?.extra?.messagingSenderId,
+    appId: Constants.expoConfig?.extra?.appId,
+  };
 
-    // Initialize Firestore
-    _db = firestore.getFirestore(firebaseApp);
-    
-    // Optional: Enable debug logs in development
-    // firestore.setLogLevel('debug'); 
+  if (!firebaseConfig.apiKey || !APP_ID) {
+    throw new Error("Firebase config not found in app.json. Ensure it's under the 'extra' key.");
+  }
 
-    // Initialize Auth and sign in
-    _auth = auth.getAuth(firebaseApp);
-    
-    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-        // Secure path: Sign in using the token provided by the Canvas environment
-        await auth.signInWithCustomToken(_auth, __initial_auth_token);
-    } else {
-        // Fallback: Sign in anonymously for local testing/development
-        await auth.signInAnonymously(_auth);
+  try {
+    const firebaseApp = initializeApp(firebaseConfig);
+    _db = getFirestore(firebaseApp);
+
+    // Initialize Auth with react-native AsyncStorage persistence when available.
+    // Use an indirect/dynamic require (via Function) so Metro's static resolver
+    // doesn't try to bundle 'firebase/auth/react-native' in environments where
+    // it's not available.
+    let persistence: any | undefined;
+    try {
+      const rq: any = Function('return require')();
+      const rn = rq('firebase/auth/react-native');
+      persistence = rn.getReactNativePersistence(ReactNativeAsyncStorage);
+    } catch (e) {
+      // module not available or require blocked — fall back to undefined
+      persistence = undefined;
     }
+
+    _auth = persistence ? initializeAuth(firebaseApp, { persistence }) : initializeAuth(firebaseApp);
+
+  } catch (error) {
+    console.error("Firebase app initialization failed:", error);
+    throw new Error("Could not initialize Firebase services.");
+  }
+
+  try {
+    await signInAnonymously(_auth);
+    console.log("Firebase initialized and user signed in anonymously.");
+  } catch (error) {
+    console.error("Firebase anonymous sign-in failed:", error);
+    throw new Error("Could not authenticate with Firebase.");
+  }
 };
 
+// Exported Service Accessors
 
-// --- Exported Services and Helpers ---
-
-/**
- * Returns the Firestore database instance. Must be called after initializeFirebase().
- */
-export const db = () => {
-    if (!_db) {
-        throw new Error("Firestore not initialized. Call initializeFirebase() first.");
-    }
-    return _db;
+export const db = (): Firestore => {
+  if (!_db) throw new Error("Firestore not initialized. Call initializeFirebase() first.");
+  return _db;
 };
 
-/**
- * Returns the Firebase Auth instance.
- */
-export const authService = () => {
-    if (!_auth) {
-        throw new Error("Auth service not initialized. Call initializeFirebase() first.");
-    }
-    return _auth;
+export const authService = (): Auth => {
+  if (!_auth) throw new Error("Auth service not initialized. Call initializeFirebase() first.");
+  return _auth;
 };
 
-/**
- * Returns the current authenticated user's ID.
- */
-export const currentUserId = () => {
-    return _auth?.currentUser?.uid || 'anonymous';
+export const currentUserId = (): string => {
+  return authService().currentUser?.uid || 'anonymous';
 };
 
-
-/**
- * Constructs the public Firestore path for the rosters collection.
- * Path: /artifacts/{appId}/public/data/rosters/{documentId}
- */
-export const getRosterCollectionPath = () => {
-    return firestore.collection(db(), 'artifacts', APP_ID, 'public', 'data', 'rosters');
+export const getRosterCollectionPath = (): CollectionReference<DocumentData> => {
+  return collection(db(), 'artifacts', APP_ID, 'public', 'data', 'rosters');
 };
