@@ -1,8 +1,5 @@
-import { doc, setDoc } from 'firebase/firestore';
+import * as firestore from 'firebase/firestore'; // Import Firestore utilities via namespace
 import { db, initializeFirebase, getRosterCollectionPath } from './firebase'; 
-
-// Global variable check for the App ID, used for mandatory Firestore pathing.
-declare const __app_id: string;
 
 /**
  * Saves the current scheduling data to a public Firestore collection 
@@ -16,18 +13,15 @@ export const saveRosterForAI = async (currentRosterData: any, rosterId: string) 
         // Ensure Firebase services are initialized before accessing DB
         await initializeFirebase();
         
-        // Use the mandatory Canvas Global Variable for App ID, falling back to the project name
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'rostretto-app';
-
-        // Get the collection path based on the mandatory public artifact structure
-        const collectionPath = getRosterCollectionPath(appId);
+        const collectionRef = getRosterCollectionPath(); 
+        
         // Get the Firestore instance using the exported function
         const dbInstance = db(); 
         
-        const docRef = doc(dbInstance, collectionPath, rosterId);
+        const docRef = firestore.doc(dbInstance, collectionRef.path, rosterId);
 
-        // Save the data, including the status signal for the Python component
-        await setDoc(docRef, {
+        // Saves the data, including the status signal for the Python component
+        await firestore.setDoc(docRef, {
             ...currentRosterData,
             status: 'pending_ai_review', // The trigger status for the AI component
             timestamp: new Date().toISOString(),
