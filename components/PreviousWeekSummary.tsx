@@ -21,6 +21,6 @@ const s = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     marginBottom: 8,
-    color: '#0F172A',
+    color: '#1A4331',
   },
 });

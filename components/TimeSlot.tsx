@@ -1,19 +1,30 @@
+// components/TimeSlot.tsx
 import * as React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 
-type StaffAssignment = {
+export type StaffAssignment = {
   name: string;
   role: string;
   tone: 'good' | 'warn' | 'alert';
 };
 
-type TimeSlotData = {
+export type TimeSlotData = {
   id: string;
-  startTime: string;
-  endTime: string;
+  startTime: string; // "9:00 am"
+  endTime: string;   // "3:00 pm"
   assignedStaff: StaffAssignment[];
   demand: string | null;
   mismatches: number;
+};
+
+type Props = {
+  slot: TimeSlotData;
+
+  // Open the AvailableEmployeesModal with this slot preselected
+  onAddStaff: (slot: TimeSlotData) => void;
+
+  // Optional: remove a staff member from this slot
+  onRemoveStaff?: (slotId: string, staffIndex: number) => void;
 };
 
 // Utility to get border color based on tone.
@@ -26,36 +37,53 @@ function getColor(tone: 'good' | 'warn' | 'alert') {
 const GOOD_COLOR = '#5CB85C';
 const ALERT_COLOR = '#E57373';
 
-export default function TimeSlot({ slot, onAddStaff }: { slot: TimeSlotData, onAddStaff: () => void }) {
+export default function TimeSlot({ slot, onAddStaff, onRemoveStaff }: Props) {
   const hasMismatches = slot.mismatches > 0;
-  
+
   const indicatorStyle = hasMismatches ? s.alertIndicator : s.goodIndicator;
   const indicatorSymbol = hasMismatches ? '!' : '✓';
 
   return (
-    // The main container for a single time slot.
     <View style={s.wrap}>
       {/* Top row with time and status indicator */}
       <View style={s.topRow}>
-        <Text style={s.timeText}>{slot.startTime} - {slot.endTime}</Text>
-        <View style={[s.indicator, indicatorStyle]}> 
-          {/* The checkmark color is now white for the 'good' state. */}
+        <Text style={s.timeText}>
+          {slot.startTime} - {slot.endTime}
+        </Text>
+        <View style={[s.indicator, indicatorStyle]}>
           <Text style={[s.indicatorText, { color: hasMismatches ? ALERT_COLOR : '#fff' }]}>
             {indicatorSymbol}
           </Text>
         </View>
       </View>
 
-      {/* Container for staff tiles and the add button */}
+      {/* Staff list + Add */}
       <View style={s.contentWrap}>
         {slot.assignedStaff.map((staff, index) => (
-          <View key={index} style={[s.staffRow, { borderColor: getColor(staff.tone) }]}>
+          <View
+            key={`${slot.id}-${staff.name}-${index}`}
+            style={[s.staffRow, { borderColor: getColor(staff.tone) }]}
+          >
             <Text style={s.staffName}>{staff.name}</Text>
             <Text style={s.staffRole}>{staff.role}</Text>
-            <Pressable><Text style={s.removeButton}>×</Text></Pressable>
+            <Pressable
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={`Remove ${staff.name}`}
+              onPress={() => onRemoveStaff?.(slot.id, index)}
+            >
+              <Text style={s.removeButton}>×</Text>
+            </Pressable>
           </View>
         ))}
-        <Pressable onPress={onAddStaff} style={s.addButton}>
+
+        <Pressable
+          onPress={() => onAddStaff(slot)}
+          style={s.addButton}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Add staff to this time slot"
+        >
           <Text style={s.addButtonText}>+</Text>
         </Pressable>
       </View>
@@ -64,14 +92,12 @@ export default function TimeSlot({ slot, onAddStaff }: { slot: TimeSlotData, onA
 }
 
 const s = StyleSheet.create({
-  // Main container for the slot.
   wrap: {
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
   },
-  // Top row for time and indicator.
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -83,12 +109,11 @@ const s = StyleSheet.create({
     fontWeight: '600',
     color: '#0F172A',
   },
-  // Content area for staff and add button.
   contentWrap: {
     gap: 8,
   },
   indicator: {
-    width: 22, 
+    width: 22,
     height: 22,
     borderRadius: 11,
     alignItems: 'center',
@@ -96,17 +121,15 @@ const s = StyleSheet.create({
     backgroundColor: '#fff',
     borderWidth: 1.5,
   },
-  // The 'good' indicator now has a solid green background.
-  goodIndicator: { 
+  goodIndicator: {
     borderColor: GOOD_COLOR,
     backgroundColor: GOOD_COLOR,
-  }, 
+  },
   alertIndicator: { borderColor: ALERT_COLOR },
-  indicatorText: { 
-    fontSize: 12, 
+  indicatorText: {
+    fontSize: 12,
     fontWeight: 'bold',
-  }, 
-  // Staff tile styling.
+  },
   staffRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -126,16 +149,14 @@ const s = StyleSheet.create({
     color: '#475569',
     marginRight: 12,
   },
-  removeButton: { 
-    fontSize: 20, 
+  removeButton: {
+    fontSize: 20,
     color: '#94A3B8',
     paddingHorizontal: 4,
   },
-  // Add button styling.
   addButton: {
     borderWidth: 1.5,
     borderColor: '#E2E8F0',
-    borderStyle: 'dashed',
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',

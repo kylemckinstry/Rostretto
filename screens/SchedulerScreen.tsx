@@ -2,7 +2,7 @@ import * as React from 'react';
 import { StyleSheet, StatusBar, View } from 'react-native';
 
 import AutoShiftBar from '../components/AutoShiftBar';
-import EmployeeListModal from '../components/EmployeeListModal';
+import AvailableEmployeesModal from '../components/AvailableEmployeesModal';
 import WeekView from '../components/WeekView';
 import DayView from '../components/DayView';
 import PreviousWeekSummary from '../components/PreviousWeekSummary';
@@ -16,35 +16,108 @@ import SandwichIcon from '../assets/sandwich.svg';
 import MixedIcon from '../assets/mixed.svg';
 import TrafficIcon from '../assets/traffic.svg';
 
-import {
-  addWeeks,
-  startOfWeek,
-  addDays,
-  isSameDay,
-  weekRangeLabel,
-  dayLabelLong,
-} from '../utils/date';
+import { addWeeks, startOfWeek, addDays, isSameDay, weekRangeLabel, dayLabelLong } from '../utils/date';
 import { DayIndicators, Employee } from '../state/types';
+import { TimeSlotData, StaffAssignment } from '../components/TimeSlot';
 
 const PADDED_WRAPPER = { paddingHorizontal: 16 };
+const HEADER_GROUP = { backgroundColor: '#E7F0EB', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 10, marginTop: 16, marginBottom: 4 };
 
-const HEADER_GROUP = {
-  backgroundColor: '#E7F0EB',
-  borderRadius: 16,
-  paddingHorizontal: 12,
-  paddingVertical: 10,
-  marginTop: 16,
-  marginBottom: 4,
-};
+function toMinutes(t: string): number {
+  const m = t.trim().match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/i);
+  if (!m) return 0;
+  let h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  const ampm = m[3].toLowerCase();
+  if (ampm === 'pm' && h !== 12) h += 12;
+  if (ampm === 'am' && h === 12) h = 0;
+  return h * 60 + min;
+}
+function toneFromScore(score?: number): 'good' | 'warn' | 'alert' {
+  const pct = Math.round((score ?? 0) * 100);
+  if (pct >= 80) return 'good';
+  if (pct >= 56) return 'warn';
+  return 'alert';
+}
+function uiRoleFromSchedulerRole(sr: string): string {
+  if (sr === 'BARISTA') return 'Coffee';
+  if (sr === 'SANDWICH') return 'Sandwich';
+  if (sr === 'WAITER') return 'Cashier';
+  return 'Manager';
+}
+
+// Generate demo time slots for day view
+function generateTimeSlots(): TimeSlotData[] {
+  const out: TimeSlotData[] = [];
+  const startHour = 9;
+  const endHour = 12;
+  for (let h = startHour; h < endHour; h++) {
+    for (const m of [0, 30]) {
+      const start = new Date(0, 0, 0, h, m);
+      const end = new Date(0, 0, 0, h, m + 30);
+      const fmt = (d: Date) =>
+        d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).replace(' ', '');
+      out.push({
+        id: `${h}-${m}`,
+        startTime: fmt(start),
+        endTime: fmt(end),
+        assignedStaff: [],
+        demand: null,
+        mismatches: 0,
+      });
+    }
+  }
+  return out;
+}
 
 export default function SchedulerScreen() {
   const [mode, setMode] = React.useState<'week' | 'day'>('week');
   const [anchorDate, setAnchorDate] = React.useState(new Date());
   const [selectedDate, setSelectedDate] = React.useState<Date | null>(null);
-  const [showModal, setShowModal] = React.useState(false);
+
+  // Time slot management for day view
+  const [slots, setSlots] = React.useState<TimeSlotData[]>(() => generateTimeSlots());
+  const [modalVisible, setModalVisible] = React.useState(false);
+  const [activeSlot, setActiveSlot] = React.useState<TimeSlotData | null>(null);
+
+  const openModalForSlot = (slot: TimeSlotData) => {
+    setActiveSlot(slot);
+    setModalVisible(true);
+  };
+
+  const handleAssign = ({ employee, start, end }: { employee: Employee; start: string; end: string }) => {
+    const startMin = toMinutes(start);
+    const endMin = toMinutes(end);
+    const name = employee.name ?? `${employee.first_name} ${employee.last_name}`;
+    const role = uiRoleFromSchedulerRole(employee.primary_role);
+    const tone = toneFromScore(employee.score);
+
+    setSlots((prev) =>
+      prev.map((s) => {
+        const sStart = toMinutes(s.startTime);
+        const sEnd = toMinutes(s.endTime);
+        const within = sStart >= startMin && sEnd <= endMin; // slot within assignment range
+        if (!within) return s;
+        if (s.assignedStaff.some((a) => a.name === name)) return s;
+
+        const next: StaffAssignment = { name, role, tone };
+        return { ...s, assignedStaff: [...s.assignedStaff, next] };
+      })
+    );
+
+    setModalVisible(false);
+    setActiveSlot(null);
+  };
+
+  const removeFromSlot = (slotId: string, staffIndex: number) => {
+    setSlots((prev) =>
+      prev.map((s) => (s.id === slotId ? { ...s, assignedStaff: s.assignedStaff.filter((_, i) => i !== staffIndex) } : s))
+    );
+  };
 
   const bottomOffset = 16;
 
+  // Mock week data for demo
   const start = startOfWeek(anchorDate);
   const mkKey = (d: Date) => d.toISOString().slice(0, 10);
   const weekIndicators: Record<string, DayIndicators> = {
@@ -57,158 +130,49 @@ export default function SchedulerScreen() {
     [mkKey(addDays(start, 6))]: { mismatches: 0, demand: 'Mixed', traffic: 'low' },
   };
 
-  const staff: Employee[] = [
-    { id: '1', name: 'Emil Avanesov', fairnessColor: 'green', score: 72 },
-    { id: '2', name: 'Kyle McKinstry', fairnessColor: 'green', score: 88 },
-    { id: '3', name: 'Mat Blackwood', fairnessColor: 'yellow', score: 68 },
-    { id: '4', name: 'Jason Yay', fairnessColor: 'red', score: 91 },
-  ];
-
-  const openDay = (d: Date) => {
-    setSelectedDate(d);
-    setMode('day');
-    setAnchorDate(d);
-  };
-
+  const openDay = (d: Date) => { setSelectedDate(d); setMode('day'); setAnchorDate(d); };
   const today = new Date();
-  const todayInThisWeek = addDays(
-    start,
-    [0, 1, 2, 3, 4, 5, 6].find(i => isSameDay(addDays(start, i), today)) ?? 0
-  );
-
-  const focusedDate =
-    mode === 'day'
-      ? selectedDate ?? today
-      : (selectedDate && isSameDay(selectedDate, today))
-        ? selectedDate
-        : todayInThisWeek;
-
+  const todayInThisWeek = addDays(start, [0,1,2,3,4,5,6].find(i => isSameDay(addDays(start, i), today)) ?? 0);
+  const focusedDate = mode === 'day' ? (selectedDate ?? today) : ((selectedDate && isSameDay(selectedDate, today)) ? selectedDate : todayInThisWeek);
   const focusedKey = mkKey(focusedDate);
-  const focusedIndicators: DayIndicators =
-    weekIndicators[focusedKey] ?? { mismatches: 0, demand: 'Mixed', traffic: 'medium' };
-
+  const focusedIndicators: DayIndicators = weekIndicators[focusedKey] ?? { mismatches: 0, demand: 'Mixed', traffic: 'medium' };
   const granularity: 'weekly' | 'daily' = mode === 'week' ? 'weekly' : 'daily';
 
-  const onGranularityChange = (g: 'weekly' | 'daily') => {
-    if (g === 'daily') {
-      const d = today;
-      setSelectedDate(d);
-      setAnchorDate(d);
-      setMode('day');
-    } else {
-      setMode('week');
-    }
-  };
+  const onGranularityChange = (g: 'weekly' | 'daily') => { if (g === 'daily') { const d = today; setSelectedDate(d); setAnchorDate(d); setMode('day'); } else { setMode('week'); } };
+  const onPrev = () => { if (mode === 'week') setAnchorDate(d => addWeeks(d, -1)); else setSelectedDate(d => { const prev = addDays(d ?? today, -1); setAnchorDate(prev); return prev; }); };
+  const onNext = () => { if (mode === 'week') setAnchorDate(d => addWeeks(d, 1)); else setSelectedDate(d => { const next = addDays(d ?? today, 1); setAnchorDate(next); return next; }); };
+  const dateLabel = mode === 'week' ? weekRangeLabel(anchorDate) : dayLabelLong(focusedDate);
 
-  const onPrev = () => {
-    if (mode === 'week') {
-      setAnchorDate(d => addWeeks(d, -1));
-    } else {
-      // In day mode, go to the previous day.
-      setSelectedDate(d => {
-        const prev = addDays(d ?? today, -1);
-        setAnchorDate(prev);
-        return prev;
-      });
-    }
-  };
-
-  const onNext = () => {
-    if (mode === 'week') {
-      setAnchorDate(d => addWeeks(d, 1));
-    } else {
-      setSelectedDate(d => {
-        const next = addDays(d ?? today, 1);
-        setAnchorDate(next);
-        return next;
-      });
-    }
-  };
-
-  const dateLabel =
-    mode === 'week' ? weekRangeLabel(anchorDate) : dayLabelLong(focusedDate);
-
-  const demandIcons = {
-    Coffee: CoffeeIcon,
-    Sandwich: SandwichIcon,
-    Mixed: MixedIcon,
-  } as const;
-
+  const demandIcons = { Coffee: CoffeeIcon, Sandwich: SandwichIcon, Mixed: MixedIcon } as const;
   const mismatchTone: IndicatorItem['tone'] = (focusedIndicators.mismatches ?? 0) > 0 ? 'alert' : 'good';
   const demandTone: IndicatorItem['tone'] = 'warn';
   const trafficTone: IndicatorItem['tone'] =
-    focusedIndicators.traffic === 'high'
-      ? 'alert'
-      : focusedIndicators.traffic === 'medium'
-        ? 'warn'
-        : 'good';
+    focusedIndicators.traffic === 'high' ? 'alert' :
+    focusedIndicators.traffic === 'medium' ? 'warn' : 'good';
 
   const pillItems: IndicatorItem[] = [
-    {
-      label: 'Mismatches',
-      tone: mismatchTone,
-      variant: 'value' as const,
-      value: String(focusedIndicators.mismatches ?? 0),
-    },
-    {
-      label: focusedIndicators.demand ?? '—',
-      tone: demandTone,
-      variant: 'icon' as const,
-      icon: demandIcons[(focusedIndicators.demand ?? 'Mixed') as keyof typeof demandIcons],
-      iconColor: '#2b2b2b',
-    },
-    {
-      label: 'Traffic',
-      tone: trafficTone,
-      variant: 'icon' as const,
-      icon: TrafficIcon,
-    },
+    { label: 'Mismatches', tone: mismatchTone, variant: 'value', value: String(focusedIndicators.mismatches ?? 0) },
+    { label: focusedIndicators.demand ?? '—', tone: demandTone, variant: 'icon', icon: demandIcons[(focusedIndicators.demand ?? 'Mixed') as keyof typeof demandIcons], iconColor: '#2b2b2b' },
+    { label: 'Traffic', tone: trafficTone, variant: 'icon', icon: TrafficIcon },
   ];
-
   const previousWeekPillItems: IndicatorItem[] = [
-    {
-      label: 'Mismatches',
-      tone: 'alert',
-      variant: 'value',
-      value: '3',
-    },
-    {
-      label: 'Demand',
-      tone: 'warn',
-      variant: 'icon',
-      icon: CoffeeIcon,
-      iconColor: '#2b2b2b',
-    },
-    {
-      label: 'Traffic',
-      tone: 'warn',
-      variant: 'icon',
-      icon: TrafficIcon,
-    },
+    { label: 'Mismatches', tone: 'alert', variant: 'value', value: '3' },
+    { label: 'Demand', tone: 'warn', variant: 'icon', icon: CoffeeIcon, iconColor: '#2b2b2b' },
+    { label: 'Traffic', tone: 'warn', variant: 'icon', icon: TrafficIcon },
   ];
 
   return (
     <View style={{ flex: 1 }}>
       <StatusBar barStyle="dark-content" />
-
       <View style={{ flex: 1, backgroundColor: '#fff' }}>
         <View style={PADDED_WRAPPER}>
           <View style={HEADER_GROUP}>
             <DateNavigator label={dateLabel} onPrev={onPrev} onNext={onNext} />
-            <DateSwitch
-              key={granularity}
-              granularity={granularity}
-              onGranularityChange={onGranularityChange}
-              fluid
-            />
+            <DateSwitch key={granularity} granularity={granularity} onGranularityChange={onGranularityChange} fluid />
           </View>
         </View>
 
-        {mode === 'week' && (
-          <View style={s.pillsWrapper}>
-            <IndicatorPills items={pillItems} />
-          </View>
-        )}
+        {mode === 'week' && <View style={s.pillsWrapper}><IndicatorPills items={pillItems} /></View>}
 
         {mode === 'week' ? (
           <>
@@ -225,31 +189,26 @@ export default function SchedulerScreen() {
           <DayView
             date={focusedDate}
             indicators={focusedIndicators}
-            // onBack is removed as it's not used by DayView.
-            onOpenEmployees={() => setShowModal(true)}
+            slots={slots}
+            onAddStaff={openModalForSlot}
+            onRemoveStaff={removeFromSlot}
           />
         )}
       </View>
 
-      <AutoShiftBar
-        onPress={() => setShowModal(true)}
-        floating
-        bottom={bottomOffset}
-      />
+      <AutoShiftBar onPress={() => { setActiveSlot(null); setModalVisible(true); }} floating bottom={bottomOffset} />
 
-      <EmployeeListModal
-        visible={showModal}
-        onClose={() => setShowModal(false)}
+      <AvailableEmployeesModal
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        slotStart={activeSlot?.startTime ?? '9:00 am'}
+        slotEnd={activeSlot?.endTime ?? '3:00 pm'}
+        onAssign={handleAssign}
       />
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  pillsWrapper: {
-    paddingHorizontal: 16,
-    marginVertical: 12,
-  }
+  pillsWrapper: { paddingHorizontal: 16, marginVertical: 12 },
 });
-
-
