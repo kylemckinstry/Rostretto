@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Pressable, Dimensions } from 'react-native';
 
 // Define the inactive background color for clarity
 const INACTIVE_BG = '#F1F5F9'; 
-const ACTIVE_BG = '#E0F2FE';
+const ACTIVE_BG = '#E4ECE8';
 
 export default function DateSwitch({
   granularity,
@@ -78,6 +78,6 @@ const s = StyleSheet.create({
     fontSize: 14,
   },
   toggleTextActive: {
-    color: '#118AB2',
+    color: '#1A4331',
   },
 });

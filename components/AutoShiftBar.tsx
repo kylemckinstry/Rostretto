@@ -31,7 +31,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   btn: {
-    backgroundColor: '#00B392',
+    backgroundColor: '#1A4331',
     paddingVertical: 14,
     borderRadius: 14,
     alignItems: 'center',

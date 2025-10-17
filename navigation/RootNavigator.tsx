@@ -18,7 +18,7 @@ function CustomHeader() {
   const insets = useSafeAreaInsets();
   return (
     <View style={{ paddingTop: insets.top, backgroundColor: '#fff' }}>
-      <Header logo={require('../assets/Rostretto-logo.png')} />
+      <Header logo={require('../assets/Rostretto-logo-2.png')} />
     </View>
   );
 }
