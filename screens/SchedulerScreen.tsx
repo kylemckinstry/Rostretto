@@ -33,9 +33,7 @@ const HEADER_GROUP = {
   borderRadius: 16,
   paddingHorizontal: 12,
   paddingVertical: 10,
-  // Increase top margin to push the container down.
   marginTop: 16,
-  // Reduce bottom margin to tighten the gap to the pills below.
   marginBottom: 4,
 };
 
@@ -106,10 +104,11 @@ export default function SchedulerScreen() {
     if (mode === 'week') {
       setAnchorDate(d => addWeeks(d, -1));
     } else {
+      // In day mode, go to the previous day.
       setSelectedDate(d => {
-        const next = addDays(d ?? today, -1);
-        setAnchorDate(next);
-        return next;
+        const prev = addDays(d ?? today, -1);
+        setAnchorDate(prev);
+        return prev;
       });
     }
   };
@@ -226,7 +225,7 @@ export default function SchedulerScreen() {
           <DayView
             date={focusedDate}
             indicators={focusedIndicators}
-            onBack={() => setMode('week')}
+            // onBack is removed as it's not used by DayView.
             onOpenEmployees={() => setShowModal(true)}
           />
         )}
@@ -249,7 +248,8 @@ export default function SchedulerScreen() {
 const s = StyleSheet.create({
   pillsWrapper: {
     paddingHorizontal: 16,
-    // Adjusts most componnents on this screen
-    marginVertical: 16,
+    marginVertical: 12,
   }
 });
+
+

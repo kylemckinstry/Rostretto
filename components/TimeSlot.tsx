@@ -16,161 +16,134 @@ type TimeSlotData = {
   mismatches: number;
 };
 
-// Utility to get border/indicator color based on tone
+// Utility to get border color based on tone.
 function getColor(tone: 'good' | 'warn' | 'alert') {
-  if (tone === 'alert') return '#EF4444'; // Red
-  if (tone === 'warn') return '#F59E0B'; // Orange
-  return '#00B392'; // Green
+  if (tone === 'alert') return '#E57373';
+  if (tone === 'warn') return '#F5A623';
+  return '#5CB85C';
 }
 
-// Color constants for status indicator fill/outline
-const GOOD_COLOR = '#00B392';
-const ALERT_COLOR = '#EF4444';
-
+const GOOD_COLOR = '#5CB85C';
+const ALERT_COLOR = '#E57373';
 
 export default function TimeSlot({ slot, onAddStaff }: { slot: TimeSlotData, onAddStaff: () => void }) {
-  const hasStaff = slot.assignedStaff.length > 0;
   const hasMismatches = slot.mismatches > 0;
   
   const indicatorStyle = hasMismatches ? s.alertIndicator : s.goodIndicator;
   const indicatorSymbol = hasMismatches ? '!' : '✓';
-  
-  const demandTextColor = hasMismatches ? ALERT_COLOR : '#475569';
-
-  const DemandRow = (
-      <View style={s.demandRow}>
-          <Text style={[s.demandText, { color: demandTextColor }]}>
-              Demand: {slot.demand || '—'}
-          </Text>
-          {/* Status Indicator (Right side) */}
-          <View style={[s.indicatorInline, indicatorStyle]}> 
-              {/* Text color must be the status color, not white */}
-              <Text style={[s.indicatorText, { color: hasMismatches ? ALERT_COLOR : GOOD_COLOR }]}>{indicatorSymbol}</Text>
-          </View>
-      </View>
-  );
 
   return (
+    // The main container for a single time slot.
     <View style={s.wrap}>
-      {/* Time Label */}
-      <Text style={s.timeText}>{slot.startTime} - {slot.endTime}</Text>
-
-      {/* Time Slot Content Box */}
-      <View style={[s.slotBox, hasStaff ? s.filledSlot : s.emptySlot]}>
-        
-        {/* Always render the demand line at the top of the box */}
-        <View style={s.demandRowWrap}>
-            {DemandRow}
+      {/* Top row with time and status indicator */}
+      <View style={s.topRow}>
+        <Text style={s.timeText}>{slot.startTime} - {slot.endTime}</Text>
+        <View style={[s.indicator, indicatorStyle]}> 
+          {/* The checkmark color is now white for the 'good' state. */}
+          <Text style={[s.indicatorText, { color: hasMismatches ? ALERT_COLOR : '#fff' }]}>
+            {indicatorSymbol}
+          </Text>
         </View>
+      </View>
 
-        {hasStaff && (
-          // --- Assigned Staff Blocks ---
-          <View style={s.staffTilesContainer}>
-              {slot.assignedStaff.map((staff, index) => (
-                  <View key={index} style={[s.staffRow, { borderColor: getColor(staff.tone) }]}>
-                      <Text style={s.staffName}>{staff.name}</Text>
-                      <Text style={s.staffRole}>{staff.role}</Text>
-                      <Pressable><Text style={s.removeButton}>x</Text></Pressable>
-                  </View>
-              ))}
+      {/* Container for staff tiles and the add button */}
+      <View style={s.contentWrap}>
+        {slot.assignedStaff.map((staff, index) => (
+          <View key={index} style={[s.staffRow, { borderColor: getColor(staff.tone) }]}>
+            <Text style={s.staffName}>{staff.name}</Text>
+            <Text style={s.staffRole}>{staff.role}</Text>
+            <Pressable><Text style={s.removeButton}>×</Text></Pressable>
           </View>
-        )}
-
-        {/* Add Button */}
+        ))}
         <Pressable onPress={onAddStaff} style={s.addButton}>
           <Text style={s.addButtonText}>+</Text>
         </Pressable>
-        
       </View>
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  wrap: { marginBottom: 16 },
-  timeText: { fontSize: 14, fontWeight: '700', color: '#475569', marginBottom: 4 },
-  
-  slotBox: {
-    padding: 10,
-    borderRadius: 12,
-    borderWidth: 1.5,
-  },
-  filledSlot: { 
+  // Main container for the slot.
+  wrap: {
     backgroundColor: '#fff',
-    borderColor: '#E2E8F0',
-    paddingBottom: 4, 
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
   },
-  emptySlot: {
-    backgroundColor: '#F8FAFC',
-    borderColor: '#F1F5F9',
-  },
-
-  // Demand Row Styles
-  demandRowWrap: {
-    marginBottom: 8, 
-  },
-  demandRow: {
+  // Top row for time and indicator.
+  topRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  demandText: { 
-    fontSize: 14, 
-    fontWeight: '500',
+  timeText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#0F172A',
   },
-  
-  // UPDATED: INLINE STATUS INDICATOR (Outline Style)
-  indicatorInline: {
-    width: 20, 
-    height: 20,
-    borderRadius: 10,
+  // Content area for staff and add button.
+  contentWrap: {
+    gap: 8,
+  },
+  indicator: {
+    width: 22, 
+    height: 22,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff', // Set background to white/no fill
-    borderWidth: 1.5, // Add the outline border
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
   },
-  // FIX: Change background to borderColor
-  goodIndicator: { borderColor: GOOD_COLOR }, 
+  // The 'good' indicator now has a solid green background.
+  goodIndicator: { 
+    borderColor: GOOD_COLOR,
+    backgroundColor: GOOD_COLOR,
+  }, 
   alertIndicator: { borderColor: ALERT_COLOR },
-  
-  // Text color is set dynamically in the render method to match the border color
   indicatorText: { 
     fontSize: 12, 
-    fontWeight: '700' 
+    fontWeight: 'bold',
   }, 
-  
-  // Staff Rows
-  staffTilesContainer: {
-    marginBottom: 8, 
-  },
+  // Staff tile styling.
   staffRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
+    padding: 10,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderLeftWidth: 5,
+    borderWidth: 1.5,
     backgroundColor: '#fff',
-    marginBottom: 4,
   },
-  staffName: { fontSize: 14, fontWeight: '600', color: '#0F172A', flex: 1 },
-  staffRole: { fontSize: 12, color: '#475569', marginRight: 10 },
+  staffName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#0F172A',
+    flex: 1,
+  },
+  staffRole: {
+    fontSize: 13,
+    color: '#475569',
+    marginRight: 12,
+  },
   removeButton: { 
-    fontSize: 16, 
+    fontSize: 20, 
     color: '#94A3B8',
-    paddingLeft: 10,
+    paddingHorizontal: 4,
   },
-  
-  // Add Button
+  // Add button styling.
   addButton: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#E2E8F0',
+    borderStyle: 'dashed',
     borderRadius: 8,
-    paddingVertical: 8,
+    paddingVertical: 12,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  addButtonText: { fontSize: 20, color: '#94A3B3', lineHeight: 20 },
+  addButtonText: {
+    fontSize: 20,
+    color: '#94A3B8',
+    lineHeight: 20,
+  },
 });

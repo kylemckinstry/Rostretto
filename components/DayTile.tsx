@@ -11,16 +11,16 @@ import MixedIcon from '../assets/mixed.svg';
 
 // Utility function to get color for traffic (green=low, red=high)
 function trafficColor(traffic: DayIndicators['traffic']) {
-  if (traffic === 'high') return '#EF476F'; // Red
-  if (traffic === 'medium') return '#FF7D00'; // Yellow
+  if (traffic === 'high') return '#E57373'; // Red
+  if (traffic === 'medium') return '#F5A623'; // Yellow
   return '#00B392'; // Green (low traffic)
 }
 
 // Utility function to get color for mismatches: <=1 green, 2 orange, >=3 red
 function mismatchColor(mismatches: number) {
-  if (mismatches <= 1) return '#00B392'; // project green
-  if (mismatches === 2) return '#F59E0B';
-  return '#EF4444';
+  if (mismatches <= 1) return '#5CB85C'; 
+  if (mismatches === 2) return '#F5A623';
+  return '#E57373';
 }
 
 export default function DayStackTile({
