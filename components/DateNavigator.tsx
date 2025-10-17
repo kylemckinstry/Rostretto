@@ -36,7 +36,7 @@ const s = StyleSheet.create({
     backgroundColor: 'transparent', // parent owns tint
     paddingHorizontal: 4,
     paddingVertical: 2,
-    marginBottom: 6,
+    marginBottom: 8,
   },
   title: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
   chevronBox: { padding: 8, alignItems: 'center', justifyContent: 'center' },

@@ -1,4 +1,3 @@
-// screens/SchedulerScreen.tsx
 import * as React from 'react';
 import { StyleSheet, StatusBar, View } from 'react-native';
 
@@ -6,10 +5,16 @@ import AutoShiftBar from '../components/AutoShiftBar';
 import EmployeeListModal from '../components/EmployeeListModal';
 import WeekView from '../components/WeekView';
 import DayView from '../components/DayView';
+import PreviousWeekSummary from '../components/PreviousWeekSummary';
 
 import DateSwitch from '../components/DateSwitch';
-import IndicatorPills from '../components/IndicatorPills';
+import IndicatorPills, { Item as IndicatorItem } from '../components/IndicatorPills';
 import DateNavigator from '../components/DateNavigator';
+
+import CoffeeIcon from '../assets/coffee.svg';
+import SandwichIcon from '../assets/sandwich.svg';
+import MixedIcon from '../assets/mixed.svg';
+import TrafficIcon from '../assets/traffic.svg';
 
 import {
   addWeeks,
@@ -21,17 +26,17 @@ import {
 } from '../utils/date';
 import { DayIndicators, Employee } from '../state/types';
 
-// Style for padding the elements that need 16px horizontal spacing
 const PADDED_WRAPPER = { paddingHorizontal: 16 };
 
-// Group container that visually ties DateNavigator + DateSwitch together
 const HEADER_GROUP = {
   backgroundColor: '#E7F0EB',
   borderRadius: 16,
   paddingHorizontal: 12,
   paddingVertical: 10,
-  marginTop: 8,
-  marginBottom: 8,
+  // Increase top margin to push the container down.
+  marginTop: 16,
+  // Reduce bottom margin to tighten the gap to the pills below.
+  marginBottom: 4,
 };
 
 export default function SchedulerScreen() {
@@ -40,10 +45,8 @@ export default function SchedulerScreen() {
   const [selectedDate, setSelectedDate] = React.useState<Date | null>(null);
   const [showModal, setShowModal] = React.useState(false);
 
-  // bottomOffset for AutoShiftBar
   const bottomOffset = 16;
 
-  // Mock data
   const start = startOfWeek(anchorDate);
   const mkKey = (d: Date) => d.toISOString().slice(0, 10);
   const weekIndicators: Record<string, DayIndicators> = {
@@ -86,7 +89,6 @@ export default function SchedulerScreen() {
   const focusedIndicators: DayIndicators =
     weekIndicators[focusedKey] ?? { mismatches: 0, demand: 'Mixed', traffic: 'medium' };
 
-  // DateSwitch handlers
   const granularity: 'weekly' | 'daily' = mode === 'week' ? 'weekly' : 'daily';
 
   const onGranularityChange = (g: 'weekly' | 'daily') => {
@@ -127,41 +129,71 @@ export default function SchedulerScreen() {
   const dateLabel =
     mode === 'week' ? weekRangeLabel(anchorDate) : dayLabelLong(focusedDate);
 
-  const pillItems = [
+  const demandIcons = {
+    Coffee: CoffeeIcon,
+    Sandwich: SandwichIcon,
+    Mixed: MixedIcon,
+  } as const;
+
+  const mismatchTone: IndicatorItem['tone'] = (focusedIndicators.mismatches ?? 0) > 0 ? 'alert' : 'good';
+  const demandTone: IndicatorItem['tone'] = 'warn';
+  const trafficTone: IndicatorItem['tone'] =
+    focusedIndicators.traffic === 'high'
+      ? 'alert'
+      : focusedIndicators.traffic === 'medium'
+        ? 'warn'
+        : 'good';
+
+  const pillItems: IndicatorItem[] = [
     {
       label: 'Mismatches',
+      tone: mismatchTone,
+      variant: 'value' as const,
       value: String(focusedIndicators.mismatches ?? 0),
-      tone:
-        (focusedIndicators.mismatches ?? 0) > 0
-          ? ('alert' as const)
-          : ('good' as const),
     },
     {
-      label: 'Demand',
-      value: focusedIndicators.demand ?? '—',
-      tone: 'warn' as const,
+      label: focusedIndicators.demand ?? '—',
+      tone: demandTone,
+      variant: 'icon' as const,
+      icon: demandIcons[(focusedIndicators.demand ?? 'Mixed') as keyof typeof demandIcons],
+      iconColor: '#2b2b2b',
     },
     {
       label: 'Traffic',
-      value:
-        (focusedIndicators.traffic ?? '—')[0].toUpperCase() +
-        (focusedIndicators.traffic ?? '—').slice(1),
-      tone:
-        focusedIndicators.traffic === 'high'
-          ? ('alert' as const)
-          : focusedIndicators.traffic === 'medium'
-            ? ('warn' as const)
-            : ('good' as const),
+      tone: trafficTone,
+      variant: 'icon' as const,
+      icon: TrafficIcon,
+    },
+  ];
+
+  const previousWeekPillItems: IndicatorItem[] = [
+    {
+      label: 'Mismatches',
+      tone: 'alert',
+      variant: 'value',
+      value: '3',
+    },
+    {
+      label: 'Demand',
+      tone: 'warn',
+      variant: 'icon',
+      icon: CoffeeIcon,
+      iconColor: '#2b2b2b',
+    },
+    {
+      label: 'Traffic',
+      tone: 'warn',
+      variant: 'icon',
+      icon: TrafficIcon,
     },
   ];
 
   return (
     <View style={{ flex: 1 }}>
       <StatusBar barStyle="dark-content" />
-      
-      <View style={{ flex: 1, backgroundColor: '#fff' }}> 
+
+      <View style={{ flex: 1, backgroundColor: '#fff' }}>
         <View style={PADDED_WRAPPER}>
-          {/* Grouped header container with tint */}
           <View style={HEADER_GROUP}>
             <DateNavigator label={dateLabel} onPrev={onPrev} onNext={onNext} />
             <DateSwitch
@@ -174,20 +206,22 @@ export default function SchedulerScreen() {
         </View>
 
         {mode === 'week' && (
-          <View style={PADDED_WRAPPER}>
+          <View style={s.pillsWrapper}>
             <IndicatorPills items={pillItems} />
           </View>
         )}
 
         {mode === 'week' ? (
-          <WeekView
-            anchorDate={anchorDate}
-            weekIndicators={weekIndicators}
-            staff={staff}
-            onPrevWeek={() => setAnchorDate(d => addWeeks(d, -1))}
-            onNextWeek={() => setAnchorDate(d => addWeeks(d, 1))}
-            onSelectDay={openDay}
-          />
+          <>
+            <WeekView
+              anchorDate={anchorDate}
+              weekIndicators={weekIndicators}
+              onPrevWeek={() => setAnchorDate(d => addWeeks(d, -1))}
+              onNextWeek={() => setAnchorDate(d => addWeeks(d, 1))}
+              onSelectDay={openDay}
+            />
+            <PreviousWeekSummary items={previousWeekPillItems} />
+          </>
         ) : (
           <DayView
             date={focusedDate}
@@ -213,5 +247,9 @@ export default function SchedulerScreen() {
 }
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#fff', position: 'relative' },
+  pillsWrapper: {
+    paddingHorizontal: 16,
+    // Adjusts most componnents on this screen
+    marginVertical: 16,
+  }
 });
