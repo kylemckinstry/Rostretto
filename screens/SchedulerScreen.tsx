@@ -1,3 +1,4 @@
+// screens/SchedulerScreen.tsx
 import * as React from 'react';
 import { StyleSheet, StatusBar, View } from 'react-native';
 
@@ -8,6 +9,7 @@ import DayView from '../components/DayView';
 
 import DateSwitch from '../components/DateSwitch';
 import IndicatorPills from '../components/IndicatorPills';
+import DateNavigator from '../components/DateNavigator';
 
 import {
   addWeeks,
@@ -22,6 +24,15 @@ import { DayIndicators, Employee } from '../state/types';
 // Style for padding the elements that need 16px horizontal spacing
 const PADDED_WRAPPER = { paddingHorizontal: 16 };
 
+// Group container that visually ties DateNavigator + DateSwitch together
+const HEADER_GROUP = {
+  backgroundColor: '#E7F0EB',
+  borderRadius: 16,
+  paddingHorizontal: 12,
+  paddingVertical: 10,
+  marginTop: 8,
+  marginBottom: 8,
+};
 
 export default function SchedulerScreen() {
   const [mode, setMode] = React.useState<'week' | 'day'>('week');
@@ -150,11 +161,16 @@ export default function SchedulerScreen() {
       
       <View style={{ flex: 1, backgroundColor: '#fff' }}> 
         <View style={PADDED_WRAPPER}>
-          <DateSwitch
-            key={granularity}
-            granularity={granularity}
-            onGranularityChange={onGranularityChange}
-          />
+          {/* Grouped header container with tint */}
+          <View style={HEADER_GROUP}>
+            <DateNavigator label={dateLabel} onPrev={onPrev} onNext={onNext} />
+            <DateSwitch
+              key={granularity}
+              granularity={granularity}
+              onGranularityChange={onGranularityChange}
+              fluid
+            />
+          </View>
         </View>
 
         {mode === 'week' && (
