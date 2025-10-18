@@ -27,7 +27,7 @@ type Props = {
   onRemoveStaff?: (slotId: string, staffIndex: number) => void;
 };
 
-// Utility to get border color based on tone.
+// Utility to get border colour based on tone
 function getColor(tone: 'good' | 'warn' | 'alert') {
   if (tone === 'alert') return '#E57373';
   if (tone === 'warn') return '#F5A623';

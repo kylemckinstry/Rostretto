@@ -2,7 +2,7 @@
 import * as React from 'react';
 import { View, Text, StyleSheet, Pressable, Dimensions } from 'react-native';
 
-// Define the inactive background color for clarity
+// Define the inactive background colour for clarity
 const INACTIVE_BG = '#F4F4F1';
 const ACTIVE_BG = '#1A4331';
 
@@ -24,7 +24,7 @@ export default function DateSwitch({
     const isActive = granularity === currentGranularity;
     return [
       s.toggle,
-      // Use a full object override to guarantee the background color is set last
+      // Use a full object override to guarantee the background colour is set last
       { backgroundColor: isActive ? ACTIVE_BG : INACTIVE_BG },
     ];
   };

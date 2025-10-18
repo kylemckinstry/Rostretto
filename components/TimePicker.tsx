@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Modal, View, Text, StyleSheet, Pressable, FlatList } from 'react-native';
 
-// Create the base array for hours.
+// Create the base array for hours
 const BASE_HOURS = Array.from({ length: 12 }, (_, i) => String(i + 1));
-// Create a large, repeating array to simulate infinite scrolling.
+// Create a large, repeating array to simulate infinite scrolling
 const HOURS = Array.from({ length: 100 }).flatMap(() => BASE_HOURS);
 const MINUTES = ['00', '30'];
 const PERIODS = ['AM', 'PM'];
@@ -58,11 +58,11 @@ export default function TimePicker({ isVisible, onClose, onConfirm, initialValue
       setMinute(m);
       setPeriod(p);
 
-      // Scroll the lists to the initial time.
+      // Scroll the lists to the initial time
       setTimeout(() => {
-        // For the hours list, find the index in the base array.
+        // For the hours list, find the index in the base array
         const hourIndex = BASE_HOURS.indexOf(String(h));
-        // Then calculate the target index in the middle of the large, repeating array.
+        // Calculate the target index in the middle of the large, repeating array
         const targetHourIndex = hourIndex >= 0 ? hourIndex + (BASE_HOURS.length * 50) : 0;
         
         hourRef.current?.scrollToIndex({ index: targetHourIndex, animated: false });

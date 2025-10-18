@@ -10,7 +10,7 @@ export type Item = {
   variant?: 'value' | 'icon' | 'text';
   icon?: IconComp;
   value?: string;
-  // Optional iconColor to override the tone color for specific icons.
+  // Optional icon colour to override the tone colour for specific icons
   iconColor?: string;
 };
 
@@ -32,7 +32,7 @@ export default function IndicatorPills({ items }: { items: Item[] }) {
             key={`${it.label}-${idx}`}
             style={[s.pill, { borderColor: c }]}
           >
-            {/* Number in a circle (or checkmark) */}
+            {/* Number in a circle (or tick mark) */}
             {variant === 'value' && (
               <>
                 <View style={[s.valueCircle, { backgroundColor: c }]}>
@@ -52,7 +52,7 @@ export default function IndicatorPills({ items }: { items: Item[] }) {
               </>
             )}
 
-            {/* fallback (text only) */}
+            {/* Fallback (text only) */}
             {variant === 'text' && (
               <Text style={[s.label, { color: c }]}>{it.label}</Text>
             )}

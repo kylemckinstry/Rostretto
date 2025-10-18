@@ -34,10 +34,10 @@ export const initializeFirebase = async () => {
     });
 
     await signInAnonymously(_auth);
-    console.log("Firebase initialized with persistent anonymous auth.");
+    console.log("Firebase initialised with persistent anonymous auth.");
 
   } catch (error) {
-    console.error("Firebase initialization or auth failed:", error);
+    console.error("Firebase initialisation or auth failed:", error);
     throw new Error("Could not connect to Firebase.");
   }
 };

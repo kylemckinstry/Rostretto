@@ -1,13 +1,12 @@
-// state/types.ts
-// Unified type system for UI + Python scheduler compatibility
+// --- Unified type system for UI + Python scheduler compatibility ---
 
-// Canonical roles used by the research-project scheduler (Python side)
+// Canonical scheduler roles (Python side)
 export type SchedulerRole = 'MANAGER' | 'BARISTA' | 'WAITER' | 'SANDWICH';
 
-// UI-friendly role labels used in components
+// UI-friendly role labels
 export type Role = 'Coffee' | 'Sandwich' | 'Cashier' | 'Manager' | 'Closer';
 
-/** UI role → scheduler role mapping */
+// UI role → scheduler role mapping
 export const UI_TO_SCHEDULER_ROLE: Record<Exclude<Role, 'Closer'>, SchedulerRole> = {
   Coffee: 'BARISTA',
   Sandwich: 'SANDWICH',
@@ -15,7 +14,7 @@ export const UI_TO_SCHEDULER_ROLE: Record<Exclude<Role, 'Closer'>, SchedulerRole
   Manager: 'MANAGER',
 };
 
-/** Scheduler role → UI role mapping */
+// Scheduler role → UI role mapping
 export const SCHEDULER_TO_UI_ROLE: Record<SchedulerRole, Exclude<Role, 'Closer'>> = {
   BARISTA: 'Coffee',
   SANDWICH: 'Sandwich',
@@ -23,52 +22,52 @@ export const SCHEDULER_TO_UI_ROLE: Record<SchedulerRole, Exclude<Role, 'Closer'>
   MANAGER: 'Manager',
 };
 
-/** Check if string is a valid SchedulerRole */
+// Check if string is a valid SchedulerRole
 export function isSchedulerRole(v: string): v is SchedulerRole {
   return v === 'MANAGER' || v === 'BARISTA' || v === 'WAITER' || v === 'SANDWICH';
 }
 
-/** Convert UI role to scheduler role */
+// Convert UI role to scheduler role
 export function toSchedulerRole(role: Exclude<Role, 'Closer'>): SchedulerRole {
   return UI_TO_SCHEDULER_ROLE[role];
 }
 
-/** Convert scheduler role to UI role */
+// Convert scheduler role to UI role
 export function toUIRole(s: SchedulerRole): Exclude<Role, 'Closer'> {
   return SCHEDULER_TO_UI_ROLE[s];
 }
 
-/** Badge colors for fairness indicators */
+// Badge colours for fairness indicators
 export type FairnessColor = 'green' | 'yellow' | 'red';
 
-/** Shift classification tags */
+// Shift classification tags
 export type ShiftTag = 'Closer' | 'Opener' | 'Peak' | 'Training';
 
 // Rating/score fields (0-1 range for ML compatibility)
 export type Rating01 = number;
 export type Score01 = number;
 
-// Employee types
+// --- Employee types ---
 
 // Canonical Employee record for UI + scheduler compatibility
 export type Employee = {
-  /** Legacy UI id for React keying */
+  // Legacy UI id for React keying
   id: string;
 
-  /** Canonical numeric id for scheduler/DB */
+  // Canonical numeric id for scheduler/DB
   employee_id: number;
 
-  /** Split names for ML */
+  // Split names for ML
   first_name: string;
   last_name: string;
 
-  /** Derived full name for UI convenience */
+  // Derived full name for UI convenience
   name?: string;
 
-  /** Primary role in scheduler terms */
+  // Primary role in scheduler terms
   primary_role: SchedulerRole;
 
-  /** Skill dimensions (0-1 range) */
+  // Skill dimensions (0-1 range)
   skill_coffee: Rating01;
   skill_sandwich: Rating01;
   customer_service_rating: Rating01;
@@ -76,60 +75,60 @@ export type Employee = {
   availability: Rating01;
   teamwork: Rating01;
 
-  /** Aggregate score (0-1, may be AI-calculated) */
+  // Aggregate score (0-1, may be AI-calculated)
   score?: Score01;
 
-  /** UI-only decoration */
+  // UI-only decoration
   fairnessColor?: FairnessColor;
 
-  /** Optional extensibility */
+  // Optional extensibility
   meta?: Record<string, unknown>;
   updated_at_iso?: string;
 };
 
-/** Lightweight UI shape for employee lists */
+// Lightweight UI shape for employee lists
 export type EmployeeListItem = Pick<Employee, 'id' | 'name' | 'employee_id' | 'primary_role' | 'score' | 'fairnessColor'>;
 
-// Shifts and scheduling
+// --- Shifts and scheduling ---
 
 // Shift event structure for the app
 export type ShiftEvent = {
   id: string;
   employeeId: string;
 
-  /** Display role for UI */
+  // Display role for UI
   role: Exclude<Role, 'Closer'> | 'Closer';
 
-  /** Canonical role for scheduler sync */
+  // Canonical role for scheduler sync
   schedulerRole?: SchedulerRole;
 
   start: Date;
   end: Date;
 
-  /** Pre-serialized times for Python/Firestore */
+  // Pre-serialized times for Python/Firestore
   startISO?: string;
   endISO?: string;
 
-  /** Shift tags */
+  // Shift tags
   tags?: ShiftTag[];
 };
 
-/** Day indicators for traffic, demand, etc. */
+// Day indicators for traffic, demand, etc.
 export type DayIndicators = {
   mismatches: number;
   demand: 'Coffee' | 'Sandwich' | 'Mixed';
   traffic: 'low' | 'medium' | 'high';
 };
 
-// Helper functions
+// --- Helper functions ---
 
-/** Get display name from employee record */
+// Get display name from employee record
 export function displayName(e: Employee): string {
   if (e.first_name || e.last_name) return `${e.first_name ?? ''} ${e.last_name ?? ''}`.trim();
   return e.name ?? `Employee ${e.employee_id}`;
 }
 
-/** Add ISO time fields to shift events */
+// Add ISO time fields to shift events
 export function withISOTimes<T extends Pick<ShiftEvent, 'start' | 'end'>>(shift: T): T & {
   startISO: string; endISO: string;
 } {
@@ -140,7 +139,7 @@ export function withISOTimes<T extends Pick<ShiftEvent, 'start' | 'end'>>(shift:
   };
 }
 
-/** Clamp number to 0-1 range */
+// Clamp number to 0-1 range
 export function clamp01(n: number): number {
   if (Number.isNaN(n)) return 0;
   if (n < 0) return 0;

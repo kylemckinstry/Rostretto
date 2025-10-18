@@ -96,7 +96,7 @@ export default function SchedulerScreen() {
       prev.map((s) => {
         const sStart = toMinutes(s.startTime);
         const sEnd = toMinutes(s.endTime);
-        const within = sStart >= startMin && sEnd <= endMin; // slot within assignment range
+        const within = sStart >= startMin && sEnd <= endMin; // Slot within assignment range
         if (!within) return s;
         if (s.assignedStaff.some((a) => a.name === name)) return s;
 

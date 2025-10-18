@@ -3,7 +3,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export function startOfWeek(d: Date): Date {
   const dt = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const day = dt.getDay(); // 0 Sun .. 6 Sat
-  const diff = (day + 6) % 7; // make Monday=0
+  const diff = (day + 6) % 7; // Make Monday = 0
   return new Date(dt.getTime() - diff * DAY_MS);
 }
 

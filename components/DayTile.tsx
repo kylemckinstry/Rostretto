@@ -9,14 +9,14 @@ import CoffeeIcon from '../assets/coffee.svg';
 import SandwichIcon from '../assets/sandwich.svg';
 import MixedIcon from '../assets/mixed.svg';
 
-// Utility function to get color for traffic (green=low, red=high)
+// Utility function to get colour for traffic (green=low, red=high)
 function trafficColor(traffic: DayIndicators['traffic']) {
   if (traffic === 'high') return '#E57373'; // Red
   if (traffic === 'medium') return '#F5A623'; // Yellow
   return '#00B392'; // Green (low traffic)
 }
 
-// Utility function to get color for mismatches: <=1 green, 2 orange, >=3 red
+// Utility function to get colour for mismatches: <=1 green, 2 orange, >=3 red
 function mismatchColor(mismatches: number) {
   if (mismatches <= 1) return '#5CB85C'; 
   if (mismatches === 2) return '#F5A623';

@@ -1,5 +1,4 @@
-// state/employees.ts
-// Single source of truth for Employee data
+// --- Single source of truth for Employee data ---
 import * as React from 'react';
 import { Employee, SchedulerRole } from './types';
 
@@ -39,7 +38,7 @@ const INITIAL: Employee[] = [
   mkEmp('4', 4, 'Jason', 'Yay', 'SANDWICH', 0.91, 'red'),
 ];
 
-// Internal store + pub/sub
+// --- Internal store + pub/sub ---
 let _employees: Employee[] = INITIAL.slice();
 
 type Listener = (next: Employee[]) => void;
@@ -49,14 +48,14 @@ function emit() {
   listeners.forEach((fn) => fn(_employees));
 }
 
-// Public API
+// --- Public API ---
 
-/** Get current employee list */
+// Get current employee list
 export function getEmployees(): Employee[] {
   return _employees;
 }
 
-/** Replace employee list and notify subscribers */
+// Replace employee list and notify subscribers
 export function setEmployees(
   next: Employee[] | ((prev: Employee[]) => Employee[])
 ): void {
@@ -64,7 +63,7 @@ export function setEmployees(
   emit();
 }
 
-/** Insert or update employee by id */
+// Insert or update employee by id
 export function upsertEmployee(one: Employee): void {
   setEmployees((prev) => {
     const i = prev.findIndex((p) => p.id === one.id);
@@ -75,18 +74,18 @@ export function upsertEmployee(one: Employee): void {
   });
 }
 
-/** Remove employee by id */
+// Remove employee by id
 export function removeEmployee(id: string): void {
   setEmployees((prev) => prev.filter((p) => p.id !== id));
 }
 
-/** Reset to initial mock data */
+// Reset to initial mock data
 export function resetEmployees(): void {
   _employees = INITIAL.slice();
   emit();
 }
 
-// React hook for live employee updates
+// --- React hook for live employee updates ---
 export function useEmployees(): Employee[] {
   const [list, setList] = React.useState<Employee[]>(() => getEmployees());
 

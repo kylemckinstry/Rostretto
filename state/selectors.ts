@@ -1,5 +1,4 @@
-// state/selectors.ts
-// Utility selectors to derive filtered views of state
+// --- Utility selectors to derive filtered views of state ---
 
 import { getEmployees } from './employees';
 import { DayIndicators, Employee } from './types';

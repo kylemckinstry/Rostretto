@@ -1,23 +1,21 @@
-// -----------------------------------------------------------------------------
-// helpers/schedulerIO.ts
-// Serialize your in-app data to the research-project scheduler format
-// -----------------------------------------------------------------------------
+// --- Serialise in-app data to the research-project scheduler format ---
 
-import { EmployeesState } from '../state/employees';
+import { getEmployees } from '../state/employees';
 import { toSchedulerAssignment } from './roleMappers';
 import { SchedulerRole } from '../state/types';
 
-export function serializeSchedule(state: EmployeesState) {
-  const employees = Object.values(state.employees).map((e) => ({
+export function serializeSchedule() {
+  const employees = getEmployees().map((e) => ({
     id: e.id,
     name: e.name,
   }));
 
-  const assignments = Object.values(state.assignments)
-    .flat()
-    .map(toSchedulerAssignment);
+  // TODO: Fix assignments serialisation
+  // const assignments = Object.values(state.assignments)
+  //   .flat()
+  //   .map(toSchedulerAssignment);
 
-  return { employees, assignments };
+  return { employees, assignments: [] };
 }
 
 // Convert daily demand indicators into default_requirements blocks

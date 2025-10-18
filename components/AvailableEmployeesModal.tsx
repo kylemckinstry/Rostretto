@@ -172,7 +172,7 @@ export default function AvailableEmployeesModal({
   );
 }
 
-// This component now uses the new CustomTimePicker.
+// Component now uses the new CustomTimePicker
 function TimePickerRow({
   label,
   value,

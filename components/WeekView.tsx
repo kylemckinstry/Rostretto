@@ -5,7 +5,7 @@ import { DayIndicators } from '../state/types';
 import { startOfWeek, addDays, addWeeks } from '../utils/date';
 import DayTile from './DayTile';
 
-// This component is now only responsible for the week pager.
+// Component responsible for the week pager
 export default function WeekView({
   anchorDate,
   weekIndicators,
