@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { View, Text, StyleSheet, Image, useWindowDimensions, ImageSourcePropType } from 'react-native';
 
-export default function Header({ title, logo }: { title?: string; logo?: ImageSourcePropType }) {
+export default function Header({ title, logo }: { title?: React.ReactNode; logo?: ImageSourcePropType }) {
   const { width } = useWindowDimensions();
   const logoWidth = Math.round(width * 0.4);
 

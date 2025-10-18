@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Header from '../components/Header';
 import SchedulerScreen from '../screens/SchedulerScreen';
-import CapabilitiesScreen from '../screens/CapabilitiesScreen';
+import CapabilitiesNavigator from './CapabilitiesNavigator';
 import FairnessScreen from '../screens/FairnessScreen';
 import EmployeeScreen from '../screens/EmployeeScreen';
 
@@ -44,7 +44,7 @@ function Tabs() {
       })}
     >
       <Tab.Screen name="Roster" component={SchedulerScreen} />
-      <Tab.Screen name="Team" component={CapabilitiesScreen} />
+      <Tab.Screen name="Team" component={CapabilitiesNavigator} />
       <Tab.Screen name="Fairness" component={FairnessScreen} />
     </Tab.Navigator>
   );

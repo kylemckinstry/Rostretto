@@ -12,41 +12,36 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import SearchIcon from '../assets/search.svg';
+import { useEmployeesUI } from '../state/employees';
 
-// --- Types from state/types, extend as needed ---
+// --- Types from store (UI-facing version) ---
 export type Role = 'Coffee' | 'Sandwich' | 'Cashier' | 'Closer';
 
 export type Employee = {
   id: string;
   name: string;
-  imageUrl?: string;            // optional avatar
-  // Map of skill -> 0..100 (percent). If 0..10 range is preferred, adjust normalize below.
+  imageUrl?: string;
   skills?: Partial<Record<Role | string, number>>;
   score?: number;
   fairnessColor?: 'green' | 'yellow' | 'red';
 };
 
 // Export roles elsewhere if needed, reuse that.
-const KNOWN_SKILLS: Array<Role | string> = [
-  'Coffee',
-  'Sandwich',
-  'Cashier',
-  'Closer',
-];
+const KNOWN_SKILLS: Array<Role | string> = ['Coffee', 'Sandwich', 'Cashier', 'Closer'];
 
 // Colour system - will move to a central file later
 const COLOURS = {
-  brandDark: '#1B4D3E', 
-  green: '#00B392',         
-  greenDeep: '#0B5D4A',     
-  amber: '#F59E0B',         
-  red: '#EF4444',           
-  gray900_80: 'rgba(23,26,31,0.8)', 
+  brandDark: '#1B4D3E',
+  green: '#00B392',
+  greenDeep: '#0B5D4A',
+  amber: '#F59E0B',
+  red: '#EF4444',
+  gray900_80: 'rgba(23,26,31,0.8)',
   gray700: '#6B7280',
   gray300: '#D1D5DB',
   gray200: '#E5E7EB',
   cardBg: '#FFFFFF',
-  pageBg: '#E6F0EC',        
+  pageBg: '#E6F0EC',
   chipBg: '#F3F4F6',
 };
 
@@ -58,7 +53,7 @@ const SKILL_COLOURS: Record<string, string> = {
   Closer: '#2B2B2B',
 };
 
-// --- Tiny helpers ---
+// --- Helpers ---
 const initials = (name: string) =>
   name
     .split(' ')
@@ -68,11 +63,8 @@ const initials = (name: string) =>
     .join('');
 
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
+const normalizePercent = (n?: number) => (typeof n === 'number' ? clamp01(n / 100) : 0);
 
-const normalizePercent = (n?: number) =>
-  typeof n === 'number' ? clamp01(n / 100) : 0;
-
-// Choose bar colour by value
 function barColor(pct: number) {
   if (pct >= 0.8) return COLOURS.greenDeep;
   if (pct >= 0.6) return COLOURS.green;
@@ -80,31 +72,23 @@ function barColor(pct: number) {
   return COLOURS.red;
 }
 
-// Set score pill colours based on value.
 function scorePillColors(v?: number) {
   if (typeof v !== 'number') {
     return { bg: '#EEF2F7', border: '#E5E7EB', text: '#2B2B2B' };
   }
   if (v >= 80) return { bg: '#EEF7F4', border: '#CDE7DE', text: COLOURS.greenDeep };
-  if (v >= 60) return { bg: '#FFF7E8', border: '#FAD7A0', text: '#B45309' }; // amber family
+  if (v >= 60) return { bg: '#FFF7E8', border: '#FAD7A0', text: '#B45309' };
   return { bg: '#FDECEC', border: '#F5B4B4', text: '#B91C1C' };
 }
 
 // --- Search parsing ---
-// Supports:
-//  - "kyle", "ava" (name contains)
-//  - "coffee > 70", "sandwich >= 40", "cashier = 90", "closer < 50"
-//  - "skill:coffee > 70" also works
 type Comparator = '>' | '>=' | '<' | '<=' | '=';
-
 function parseQuery(q: string):
   | { kind: 'name'; needle: string }
   | { kind: 'skill'; skill: string; cmp: Comparator; value: number }
   | null {
   const trimmed = q.trim();
   if (!trimmed) return null;
-
-  // Try skill comparator pattern
   const skillRegex =
     /^(?:skill\s*:\s*)?([a-zA-Z][\w\s-]+)\s*(<=|>=|=|<|>)\s*(\d{1,3})$/i;
   const m = trimmed.match(skillRegex);
@@ -114,8 +98,6 @@ function parseQuery(q: string):
     const value = Math.max(0, Math.min(100, parseInt(m[3], 10)));
     return { kind: 'skill', skill, cmp, value };
   }
-
-  // Fallback: treat as name search
   return { kind: 'name', needle: trimmed.toLowerCase() };
 }
 
@@ -129,12 +111,11 @@ function passesSkillCmp(v: number, cmp: Comparator, target: number) {
   }
 }
 
-// --- SkillBar component (inline to keep file self-contained) ---
+// --- SkillBar ---
 function SkillBar({ label, value }: { label: string; value: number }) {
   const pct = normalizePercent(value);
   const width = `${Math.round(pct * 100)}%`;
-  const tint = SKILL_COLOURS[label] ?? barColor(pct); // fixed colour per skill
-  // cast to any so TypeScript accepts the percentage string for width
+  const tint = SKILL_COLOURS[label] ?? barColor(pct);
   const fillStyle: any = { width, backgroundColor: tint };
   return (
     <View style={s.skillRow}>
@@ -148,16 +129,9 @@ function SkillBar({ label, value }: { label: string; value: number }) {
 }
 
 // --- EmployeeTile ---
-function EmployeeTile({
-  employee,
-  onPress,
-}: {
-  employee: Employee;
-  onPress: () => void;
-}) {
+function EmployeeTile({ employee, onPress }: { employee: Employee; onPress: () => void }) {
   const topSkills = React.useMemo(() => {
     const entries = Object.entries(employee.skills ?? {});
-    // show up to 3 skills; prefer known skills first, then others
     const ordered = [
       ...entries.filter(([k]) => KNOWN_SKILLS.includes(k)),
       ...entries.filter(([k]) => !KNOWN_SKILLS.includes(k)),
@@ -173,7 +147,6 @@ function EmployeeTile({
     </View>
   );
 
-  // Style the overall score badge with dynamic colours.
   const pill = scorePillColors(employee.score);
 
   return (
@@ -183,9 +156,7 @@ function EmployeeTile({
           {avatar}
           <View style={{ flex: 1 }}>
             <Text style={s.empName}>{employee.name}</Text>
-            {/* Remove the redundant "Score 88" chip under the name. */}
           </View>
-          {/* Placeholder badge icon slot */}
           <View style={[s.scorePill, { backgroundColor: pill.bg, borderColor: pill.border }]}>
             <Text style={[s.scorePillText, { color: pill.text }]}>
               {typeof employee.score === 'number' ? Math.round(employee.score) : '--'}
@@ -197,23 +168,18 @@ function EmployeeTile({
           {topSkills.length === 0 ? (
             <Text style={s.noSkills}>No skills yet</Text>
           ) : (
-            topSkills.map(([k, v]) => (
-              <SkillBar key={k} label={k} value={v ?? 0} />
-            ))
+            topSkills.map(([k, v]) => <SkillBar key={k} label={k} value={v ?? 0} />)
           )}
         </View>
 
-        {/* Identified gaps (simple example: any known skill < 50) */}
         <View style={s.gapsBlock}>
           <Text style={s.gapsTitle}>Identified Gaps</Text>
           <View style={s.gapsChips}>
-            {KNOWN_SKILLS.filter((k) => (employee.skills?.[k] ?? 0) < 50).map(
-              (gap) => (
-                <View key={gap} style={s.gapChipOutline}>
-                  <Text style={s.gapChipOutlineText}>{gap}</Text>
-                </View>
-              )
-            )}
+            {KNOWN_SKILLS.filter((k) => (employee.skills?.[k] ?? 0) < 50).map((gap) => (
+              <View key={gap} style={s.gapChipOutline}>
+                <Text style={s.gapChipOutlineText}>{gap}</Text>
+              </View>
+            ))}
           </View>
         </View>
       </View>
@@ -225,38 +191,9 @@ function EmployeeTile({
 export default function CapabilitiesScreen() {
   const insets = useSafeAreaInsets();
   const nav = useNavigation();
-
-  // TODO: replace with employees state selector (e.g. useEmployees())
-  // Mock data, will wire to Firebase/state store.
-  const [employees] = React.useState<Employee[]>([
-    {
-      id: '1',
-      name: 'Kyle McKinstry',
-      imageUrl:
-        'https://images.unsplash.com/photo-1502685104226-ee32379fefbe?w=256&h=256&fit=crop&auto=format',
-      skills: { Coffee: 92, Sandwich: 74, Closer: 38 },
-      score: 88,
-    },
-    {
-      id: '2',
-      name: 'Emil Avanesov',
-      imageUrl:
-        'https://images.unsplash.com/photo-1544723795-3fb6469f5b39?w=256&h=256&fit=crop&auto=format',
-      skills: { Coffee: 68, Sandwich: 79, Cashier: 55 },
-      score: 81,
-    },
-    {
-      id: '3',
-      name: 'Mathew Blackwood',
-      imageUrl:
-        'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=256&h=256&fit=crop&auto=format',
-      skills: { Coffee: 62, Sandwich: 40, Cashier: 86 },
-      score: 73,
-    },
-  ]);
+  const employees = useEmployeesUI(); // live state from store
 
   const [query, setQuery] = React.useState('');
-
   const filters = React.useMemo(() => parseQuery(query), [query]);
 
   const filtered = React.useMemo(() => {
@@ -265,17 +202,12 @@ export default function CapabilitiesScreen() {
       return employees.filter((e) => {
         const [first = '', last = ''] = e.name.toLowerCase().split(' ');
         const n = filters.needle;
-        // Check if the query matches the start of first or last name only
         return first.startsWith(n) || last.startsWith(n);
       });
     }
-    // Skill filter
     const skillLc = filters.skill.toLowerCase();
     return employees.filter((e) => {
-      // find skill key by loose match
-      const entry = Object.entries(e.skills ?? {}).find(
-        ([k]) => k.toLowerCase() === skillLc
-      );
+      const entry = Object.entries(e.skills ?? {}).find(([k]) => k.toLowerCase() === skillLc);
       if (!entry) return false;
       const value = entry[1] ?? 0;
       return passesSkillCmp(value, filters.cmp, filters.value);
@@ -315,10 +247,9 @@ export default function CapabilitiesScreen() {
         renderItem={({ item }) => (
           <EmployeeTile
             employee={item}
-            onPress={() => {
-              // To hook up individual employee details when ready
-              // nav.navigate('EmployeeDetails' as never, { id: item.id } as never)
-            }}
+            onPress={() =>
+              (nav as any).navigate('Employee' as never, { employeeId: item.id } as never)
+            }
           />
         )}
         style={{ flex: 1 }}
@@ -350,12 +281,7 @@ const s = StyleSheet.create({
     borderColor: COLOURS.gray200,
     paddingHorizontal: 12,
     height: 40,
-    marginBottom: 18, // Compress vertical space under the field.
-  },
-  searchIcon: {
-    fontSize: 16,
-    marginRight: 8,
-    color: COLOURS.gray900_80,
+    marginBottom: 18,
   },
   searchInput: {
     flex: 1,
@@ -368,7 +294,6 @@ const s = StyleSheet.create({
     paddingHorizontal: 6,
     color: COLOURS.gray700,
   },
-
   card: {
     backgroundColor: COLOURS.cardBg,
     borderRadius: 16,
@@ -384,12 +309,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    marginRight: 12,
-  },
+  avatar: { width: 44, height: 44, borderRadius: 22, marginRight: 12 },
   avatarFallback: {
     width: 44,
     height: 44,
@@ -399,28 +319,8 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
-  avatarText: {
-    color: '#111827',
-    fontWeight: '700',
-  },
-  empName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  chip: {
-    alignSelf: 'flex-start',
-    backgroundColor: COLOURS.chipBg,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    marginTop: 4,
-  },
-  chipText: { fontSize: 12, color: COLOURS.gray700 },
-
-  badgeIcon: { fontSize: 18, marginLeft: 8 },
-
-  // score pill
+  avatarText: { color: '#111827', fontWeight: '700' },
+  empName: { fontSize: 16, fontWeight: '700', color: '#111827' },
   scorePill: {
     minWidth: 42,
     paddingHorizontal: 8,
@@ -432,22 +332,11 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  scorePillText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLOURS.greenDeep,
-  },
-
+  scorePillText: { fontSize: 14, fontWeight: '700', color: COLOURS.greenDeep },
   skillsBlock: { marginTop: 4 },
   noSkills: { color: COLOURS.gray700, fontStyle: 'italic' },
-
-  skillRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 4,
-  },
-
-  skillLabel: { width: 96, color: '#111827', fontSize: 14, fontWeight: '400' },
+  skillRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 4 },
+  skillLabel: { width: 96, color: '#111827', fontSize: 14 },
   barTrack: {
     flex: 1,
     height: 10,
@@ -456,31 +345,11 @@ const s = StyleSheet.create({
     overflow: 'hidden',
     marginHorizontal: 8,
   },
-  barFill: {
-    height: '100%',
-    borderRadius: 999,
-  },
-  // Width matches the score pill so numbers align in a clean column.
+  barFill: { height: '100%', borderRadius: 999 },
   skillPct: { width: 42, textAlign: 'right', color: '#111827', fontSize: 14, fontWeight: '700' },
-
   gapsBlock: { marginTop: 12 },
   gapsTitle: { fontWeight: '700', color: '#2B2B2B', marginBottom: 6 },
   gapsChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-
-  // kept for reference by name (unused)
-  gapChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF3C7',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  gapChipText: { color: '#92400E', fontSize: 12 },
-  gapChipClose: { color: '#92400E', fontSize: 12 },
-
   gapChipOutline: {
     borderRadius: 999,
     paddingHorizontal: 10,
@@ -491,6 +360,7 @@ const s = StyleSheet.create({
     borderColor: '#DC2626',
     backgroundColor: '#FFFFFF',
   },
-
   gapChipOutlineText: { color: '#2B2B2B', fontSize: 12, fontWeight: '600' },
 });
+
+
