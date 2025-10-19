@@ -1,11 +1,11 @@
 import * as React from 'react';
 import { View, StyleSheet } from 'react-native';
 import PagerView from 'react-native-pager-view';
-import { DayIndicators } from '../state/types';
-import { startOfWeek, addDays, addWeeks } from '../utils/date';
+import { DayIndicators } from '../../state/types';
+import { startOfWeek, addDays, addWeeks } from '../../utils/date';
 import DayTile from './DayTile';
 
-// Component responsible for the week pager
+// Week view with horizontal paging between weeks
 export default function WeekView({
   anchorDate,
   weekIndicators,

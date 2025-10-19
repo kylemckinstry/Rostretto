@@ -10,10 +10,7 @@ import {
   LayoutAnimation,
   UIManager,
 } from 'react-native';
-// I've removed the old date time picker import.
-import { useEmployees } from '../state/employees';
-import { Employee } from '../state/types';
-// Import the new custom time picker.
+import { useEmployeesUI, type UIEmployee } from '../../viewmodels/employees';
 import CustomTimePicker from './TimePicker';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -25,7 +22,7 @@ type Props = {
   onClose: () => void;
   slotStart: string;
   slotEnd: string;
-  onAssign: (opts: { employee: Employee; start: string; end: string }) => void;
+  onAssign: (opts: { employee: UIEmployee; start: string; end: string }) => void;
 };
 
 export default function AvailableEmployeesModal({
@@ -35,11 +32,11 @@ export default function AvailableEmployeesModal({
   slotEnd,
   onAssign,
 }: Props) {
-  const employees = useEmployees();
+  const employees = useEmployeesUI(); // UIEmployee[]
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
-  const [byIdTimes, setByIdTimes] = React.useState<
-    Record<string, { start: string; end: string }>
-  >({});
+  const [byIdTimes, setByIdTimes] = React.useState<Record<string, { start: string; end: string }>>(
+    {}
+  );
 
   React.useEffect(() => {
     if (!visible) {
@@ -55,12 +52,7 @@ export default function AvailableEmployeesModal({
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={s.header}>
         <View style={{ width: 24 }} />
         <Text style={s.title}>Available Employees</Text>
@@ -75,24 +67,16 @@ export default function AvailableEmployeesModal({
           <Text style={s.colHead}>Score</Text>
         </View>
 
-        <FlatList
+        <FlatList<UIEmployee>
           data={employees}
           keyExtractor={(e) => e.id}
           contentContainerStyle={{ gap: 12, paddingBottom: 40 }}
           renderItem={({ item }) => {
-            const name = item.name ?? `${item.first_name} ${item.last_name}`;
-            const pct = Math.round((item.score ?? 0) * 100);
-            const tone = pct >= 80 ? 'good' : pct >= 56 ? 'warn' : 'alert';
-            const border =
-              tone === 'good'
-                ? '#5CB85C'
-                : tone === 'warn'
-                  ? '#F5A623'
-                  : '#E57373';
-            const times = byIdTimes[item.id] ?? {
-              start: slotStart,
-              end: slotEnd,
-            };
+            const name = item.name;
+            const score = Math.round(item.score ?? 0); // UIEmployee already 0..100
+            const tone = score >= 80 ? 'good' : score >= 56 ? 'warn' : 'alert';
+            const border = tone === 'good' ? '#5CB85C' : tone === 'warn' ? '#F5A623' : '#E57373';
+            const times = byIdTimes[item.id] ?? { start: slotStart, end: slotEnd };
             const isOpen = expandedId === item.id;
 
             const toggle = () => {
@@ -102,11 +86,7 @@ export default function AvailableEmployeesModal({
             };
 
             return (
-              <Pressable
-                onPress={toggle}
-                style={[s.card, isOpen && s.cardExpanded]}
-                accessibilityRole="button"
-              >
+              <Pressable onPress={toggle} style={[s.card, isOpen && s.cardExpanded]} accessibilityRole="button">
                 <View style={s.row}>
                   <View style={s.left}>
                     <View style={[s.initial, { borderColor: border }]}>
@@ -118,7 +98,7 @@ export default function AvailableEmployeesModal({
                   </View>
                   <View style={s.right}>
                     <View style={[s.scoreBox, { borderColor: border }]}>
-                      <Text style={[s.scoreText, { color: border }]}>{pct}</Text>
+                      <Text style={[s.scoreText, { color: border }]}>{score}</Text>
                     </View>
                   </View>
                 </View>
@@ -172,7 +152,7 @@ export default function AvailableEmployeesModal({
   );
 }
 
-// Component now uses the new CustomTimePicker
+// Inline time row using your CustomTimePicker
 function TimePickerRow({
   label,
   value,
@@ -185,15 +165,10 @@ function TimePickerRow({
   const [isVisible, setVisible] = React.useState(false);
 
   const formatTime = (date: Date) =>
-    date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
+    date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
   const handleConfirm = (date: Date) => {
-    const formatted = formatTime(date);
-    onChange(formatted);
+    onChange(formatTime(date));
     setVisible(false);
   };
 

@@ -1,8 +1,8 @@
 import * as React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import IndicatorPills, { Item as IndicatorItem } from './IndicatorPills';
+import IndicatorPills, { Item as IndicatorItem } from '../IndicatorPills';
 
-// A component to display the previous week's summary.
+// Displays previous week's summary with indicators
 export default function PreviousWeekSummary({ items }: { items: IndicatorItem[] }) {
   return (
     <View style={s.container}>

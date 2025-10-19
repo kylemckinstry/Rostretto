@@ -1,27 +1,32 @@
-// --- Serialise in-app data to the research-project scheduler format ---
-
-import { getEmployees } from '../state/employees';
+// helpers/schedulerIO.ts
+import { getEmployeesUI } from '../viewmodels/employees';
 import { toSchedulerAssignment } from './roleMappers';
 import { SchedulerRole } from '../state/types';
 
+// Scheduler Data Serialisation
+
+// Convert employee data to scheduler format
 export function serializeSchedule() {
-  const employees = getEmployees().map((e) => ({
+  const employees = getEmployeesUI().map((e) => ({
     id: e.id,
     name: e.name,
   }));
 
-  // TODO: Fix assignments serialisation
-  // const assignments = Object.values(state.assignments)
-  //   .flat()
-  //   .map(toSchedulerAssignment);
+  // Assignment serialisation pending scheduling logic implementation
+  const assignments: any[] = [];
 
-  return { employees, assignments: [] };
+  return { employees, assignments };
 }
 
-// Convert daily demand indicators into default_requirements blocks
-export function roleCoverageFromIndicators(indicators: Record<string, {
-  demand: 'Coffee' | 'Sandwich' | 'Mixed';
-}>) {
+// Convert demand indicators to scheduler coverage requirements
+export function roleCoverageFromIndicators(
+  indicators: Record<
+    string,
+    {
+      demand: 'Coffee' | 'Sandwich' | 'Mixed';
+    }
+  >
+) {
   const out: Record<string, Record<SchedulerRole, number>> = {};
 
   for (const [dateISO, { demand }] of Object.entries(indicators)) {

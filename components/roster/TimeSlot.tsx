@@ -1,6 +1,7 @@
 // components/TimeSlot.tsx
 import * as React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { colours } from '../../theme/colours';
 
 export type StaffAssignment = {
   name: string;
@@ -27,15 +28,12 @@ type Props = {
   onRemoveStaff?: (slotId: string, staffIndex: number) => void;
 };
 
-// Utility to get border colour based on tone
+// Border colour based on tone
 function getColor(tone: 'good' | 'warn' | 'alert') {
-  if (tone === 'alert') return '#E57373';
-  if (tone === 'warn') return '#F5A623';
-  return '#5CB85C';
+  if (tone === 'alert') return colours.status.danger;
+  if (tone === 'warn') return colours.status.warning;
+  return colours.status.success;
 }
-
-const GOOD_COLOR = '#5CB85C';
-const ALERT_COLOR = '#E57373';
 
 export default function TimeSlot({ slot, onAddStaff, onRemoveStaff }: Props) {
   const hasMismatches = slot.mismatches > 0;
@@ -51,7 +49,7 @@ export default function TimeSlot({ slot, onAddStaff, onRemoveStaff }: Props) {
           {slot.startTime} - {slot.endTime}
         </Text>
         <View style={[s.indicator, indicatorStyle]}>
-          <Text style={[s.indicatorText, { color: hasMismatches ? ALERT_COLOR : '#fff' }]}>
+          <Text style={[s.indicatorText, { color: hasMismatches ? colours.status.danger : colours.bg.canvas }]}>
             {indicatorSymbol}
           </Text>
         </View>
@@ -93,7 +91,7 @@ export default function TimeSlot({ slot, onAddStaff, onRemoveStaff }: Props) {
 
 const s = StyleSheet.create({
   wrap: {
-    backgroundColor: '#fff',
+    backgroundColor: colours.bg.canvas,
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
@@ -107,7 +105,7 @@ const s = StyleSheet.create({
   timeText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#0F172A',
+    color: colours.text.primary,
   },
   contentWrap: {
     gap: 8,
@@ -118,14 +116,14 @@ const s = StyleSheet.create({
     borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colours.bg.canvas,
     borderWidth: 1.5,
   },
   goodIndicator: {
-    borderColor: GOOD_COLOR,
-    backgroundColor: GOOD_COLOR,
+    borderColor: colours.status.success,
+    backgroundColor: colours.status.success,
   },
-  alertIndicator: { borderColor: ALERT_COLOR },
+  alertIndicator: { borderColor: colours.status.danger },
   indicatorText: {
     fontSize: 12,
     fontWeight: 'bold',
@@ -136,27 +134,27 @@ const s = StyleSheet.create({
     padding: 10,
     borderRadius: 8,
     borderWidth: 1.5,
-    backgroundColor: '#fff',
+    backgroundColor: colours.bg.canvas,
   },
   staffName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#0F172A',
+    color: colours.text.primary,
     flex: 1,
   },
   staffRole: {
     fontSize: 13,
-    color: '#475569',
+    color: colours.text.muted,
     marginRight: 12,
   },
   removeButton: {
     fontSize: 20,
-    color: '#94A3B8',
+    color: colours.text.muted,
     paddingHorizontal: 4,
   },
   addButton: {
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: colours.border.default,
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
@@ -164,7 +162,7 @@ const s = StyleSheet.create({
   },
   addButtonText: {
     fontSize: 20,
-    color: '#94A3B8',
+    color: colours.text.muted,
     lineHeight: 20,
   },
 });

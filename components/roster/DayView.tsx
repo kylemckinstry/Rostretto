@@ -1,12 +1,12 @@
 import * as React from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
-import IndicatorPills, { Item as IndicatorItem } from './IndicatorPills';
-import TimeSlot, { TimeSlotData } from './TimeSlot';
+import IndicatorPills, { Item as IndicatorItem } from '../IndicatorPills';
+import TimeSlot, { TimeSlotData } from '../roster/TimeSlot';
 
-import CoffeeIcon from '../assets/coffee.svg';
-import SandwichIcon from '../assets/sandwich.svg';
-import MixedIcon from '../assets/mixed.svg';
-import TrafficIcon from '../assets/traffic.svg';
+import CoffeeIcon from '../../assets/coffee.svg';
+import SandwichIcon from '../../assets/sandwich.svg';
+import MixedIcon from '../../assets/mixed.svg';
+import TrafficIcon from '../../assets/traffic.svg';
 
 export default function DayView({
   date,

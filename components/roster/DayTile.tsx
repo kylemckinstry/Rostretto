@@ -1,22 +1,22 @@
 import * as React from 'react';
 import { Pressable, View, Text, StyleSheet } from 'react-native';
-import { DayIndicators } from '../state/types';
-import { fmtDayLabel } from '../utils/date';
+import { DayIndicators } from '../../state/types';
+import { fmtDayLabel } from '../../utils/date';
 
-// Imported svg icons
-import TrafficIcon from '../assets/traffic.svg';
-import CoffeeIcon from '../assets/coffee.svg';
-import SandwichIcon from '../assets/sandwich.svg';
-import MixedIcon from '../assets/mixed.svg';
+// SVG icons for demand indicators
+import TrafficIcon from '../../assets/traffic.svg';
+import CoffeeIcon from '../../assets/coffee.svg';
+import SandwichIcon from '../../assets/sandwich.svg';
+import MixedIcon from '../../assets/mixed.svg';
 
-// Utility function to get colour for traffic (green=low, red=high)
+// Traffic level colours (green=low, red=high)
 function trafficColor(traffic: DayIndicators['traffic']) {
   if (traffic === 'high') return '#E57373'; // Red
   if (traffic === 'medium') return '#F5A623'; // Yellow
   return '#00B392'; // Green (low traffic)
 }
 
-// Utility function to get colour for mismatches: <=1 green, 2 orange, >=3 red
+// Mismatch colours: 1 or less green, 2 orange, 3 or more red
 function mismatchColor(mismatches: number) {
   if (mismatches <= 1) return '#5CB85C'; 
   if (mismatches === 2) return '#F5A623';
@@ -53,17 +53,17 @@ export default function DayStackTile({
       <Text style={s.dayText}>{dayLetter}</Text>
       <Text style={s.dateText}>{dateNumber}</Text>
 
-      {/* Mismatch dot */}
+      {/* Shows mismatch severity as coloured dot */}
       <View style={s.stackItem}>
         <View style={[s.mismatchDot, { backgroundColor: mismatchDotColor }]} />
       </View>
 
-      {/* Demand icon svg. e.g. Coffee*/}
+      {/* Displays demand type icon (Coffee/Sandwich/Mixed) */}
       <View style={s.stackItem}>
         <DemandIcon width={20} height={20} color="#2b2b2b" />
       </View>
 
-      {/* Traffic svg. Changes colour. */}
+      {/* Shows traffic level with colour-coded icon */}
       <View style={s.stackItem}>
         <TrafficIcon width={26} height={26} color={trafficIconColor} />
       </View>

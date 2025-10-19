@@ -11,11 +11,13 @@ import {
   Pressable,
 } from 'react-native';
 import { useNavigation, RouteProp, useRoute } from '@react-navigation/native';
-import { useEmployeesUI } from '../state/employees';
-import Radar from '../components/Radar';
-import CollapsibleSection from '../components/CollapsibleSection';
-import TrainingCard from '../components/TrainingCard';
-import { ChevronLeft } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useEmployeesUI } from '../viewmodels/employees';
+import Radar from '../components/employees/Radar';
+import CollapsibleSection from '../components/employees/CollapsibleSection';
+import TrainingCard from '../components/employees/TrainingCard';
+import { ChevronLeft, X } from 'lucide-react-native';
+import { colours } from '../theme/colours';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -38,6 +40,7 @@ export default function EmployeeScreen() {
   const route = useRoute<EmployeeRoute>();
   const { employeeId } = route.params;
   const nav = useNavigation();
+  const insets = useSafeAreaInsets();
 
   const employees = useEmployeesUI();
   const employee = React.useMemo(
@@ -55,9 +58,9 @@ export default function EmployeeScreen() {
 
   if (!employee) {
     return (
-      <View style={[s.center, { flex: 1, backgroundColor: BG }]}>
+      <View style={[s.center, { flex: 1, backgroundColor: colours.brand.accent }]}>
         <Text style={s.header}>Individual Performance</Text>
-        <Text style={s.subtle}>We couldn’t find that teammate.</Text>
+        <Text style={s.subtle}>We couldn't find that teammate.</Text>
       </View>
     );
   }
@@ -91,13 +94,13 @@ export default function EmployeeScreen() {
   ];
 
   return (
-    <View style={[s.container, { flex: 1 }]}>
+    <View style={[s.container, { flex: 1, paddingTop: Math.max(8, insets.top - 32) }]}>
       {/* Header (RootNavigator style) */}
       <View style={s.headerRow}>
-        <Pressable onPress={() => nav.goBack()} hitSlop={8} style={s.backCircle}>
-          <ChevronLeft size={20} color={TEXT_DARK} />
-        </Pressable>
         <Text style={s.header}>Individual Performance</Text>
+        <Pressable onPress={() => nav.goBack()} hitSlop={8} style={s.closeButton}>
+          <X size={20} color={colours.text.primary} />
+        </Pressable>
       </View>
 
       <ScrollView
@@ -121,23 +124,23 @@ export default function EmployeeScreen() {
         {employee.skillSummary && (
           <View style={s.pillRow}>
             <View style={[s.pill, s.good]}>
-              <Text style={[s.pillTitle, { color: '#0B5D4A' }]}>High Skills</Text>
+              <Text style={[s.pillTitle, { color: colours.brand.primary }]}>High Skills</Text>
               {employee.skillSummary.high.length > 0 ? (
-                <Text style={[s.pillText, { color: '#0B5D4A' }]}>
+                <Text style={[s.pillText, { color: colours.brand.primary }]}>
                   {employee.skillSummary.high.join(', ')}
                 </Text>
               ) : (
-                <Text style={[s.pillText, { color: '#0B5D4A' }]}>None yet</Text>
+                <Text style={[s.pillText, { color: colours.brand.primary }]}>None yet</Text>
               )}
             </View>
             <View style={[s.pill, s.bad]}>
-              <Text style={[s.pillTitle, { color: '#B91C1C' }]}>Skill Gaps</Text>
+              <Text style={[s.pillTitle, { color: colours.status.danger }]}>Skill Gaps</Text>
               {employee.skillSummary.low.length > 0 ? (
-                <Text style={[s.pillText, { color: '#B91C1C' }]}>
+                <Text style={[s.pillText, { color: colours.status.danger }]}>
                   {employee.skillSummary.low.join(', ')}
                 </Text>
               ) : (
-                <Text style={[s.pillText, { color: '#B91C1C' }]}>None detected</Text>
+                <Text style={[s.pillText, { color: colours.status.danger }]}>None detected</Text>
               )}
             </View>
           </View>
@@ -206,49 +209,38 @@ export default function EmployeeScreen() {
   );
 }
 
-const GREEN = '#00B392';
-const BG = '#F0F5F2';
-const CARD = '#FFFFFF';
-const BORDER = '#E5EBE8';
-const TEXT_DARK = '#171A1F';
-const TEXT_SUBTLE = '#5B636A';
-
 const s = StyleSheet.create({
   container: {
-    backgroundColor: BG,
+    backgroundColor: colours.brand.accent,
     paddingHorizontal: 16,
-    paddingTop: 8,
     paddingBottom: 0,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     marginBottom: 12,
-    position: 'relative',
   },
-  backCircle: {
-    position: 'absolute',
-    left: 0,
+  closeButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: colours.border.default,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colours.bg.canvas,
   },
   header: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
-    color: TEXT_DARK,
+    color: colours.brand.primary,
   },
   card: {
-    backgroundColor: CARD,
+    backgroundColor: colours.bg.canvas,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: BORDER,
+    borderColor: colours.border.default,
     paddingVertical: 20,
     paddingHorizontal: 16,
     alignItems: 'center',
@@ -259,7 +251,7 @@ const s = StyleSheet.create({
     height: 132,
     borderRadius: 66,
     borderWidth: 4,
-    borderColor: GREEN,
+    borderColor: colours.status.success,
     marginBottom: 12,
   },
   avatarFallback: {
@@ -267,15 +259,15 @@ const s = StyleSheet.create({
     height: 132,
     borderRadius: 66,
     borderWidth: 4,
-    borderColor: GREEN,
+    borderColor: colours.status.success,
     marginBottom: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#D1D5DB',
+    backgroundColor: colours.bg.subtle,
   },
-  avatarText: { fontSize: 36, fontWeight: '700', color: TEXT_DARK },
-  name: { fontSize: 18, fontWeight: '700', color: TEXT_DARK },
-  role: { fontSize: 14, color: TEXT_SUBTLE, marginTop: 4 },
+  avatarText: { fontSize: 36, fontWeight: '700', color: colours.text.primary },
+  name: { fontSize: 18, fontWeight: '700', color: colours.text.primary },
+  role: { fontSize: 14, color: colours.text.muted, marginTop: 4 },
 
   pillRow: {
     flexDirection: 'row',
@@ -288,7 +280,7 @@ const s = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colours.bg.canvas,
     borderWidth: 1.5,
   },
   pillTitle: {
@@ -302,26 +294,26 @@ const s = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-  good: { borderColor: '#0B5D4A' },
-  bad: { borderColor: '#B91C1C' },
+  good: { borderColor: colours.brand.primary },
+  bad: { borderColor: colours.status.danger },
 
   meterRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  meterLabel: { flex: 1, fontSize: 13, color: TEXT_DARK },
+  meterLabel: { flex: 1, fontSize: 13, color: colours.text.primary },
   meterTrack: {
     flex: 1.2,
     height: 8,
     borderRadius: 8,
-    backgroundColor: '#E6E8EA',
+    backgroundColor: colours.border.default,
     overflow: 'hidden',
   },
   meterFill: {
     height: 8,
     borderRadius: 8,
-    backgroundColor: TEXT_DARK,
+    backgroundColor: colours.text.primary,
     opacity: 0.8,
   },
-  meterPct: { width: 40, textAlign: 'right', fontSize: 12, color: TEXT_SUBTLE },
+  meterPct: { width: 40, textAlign: 'right', fontSize: 12, color: colours.text.muted },
   center: { alignItems: 'center', justifyContent: 'center' },
-  subtle: { color: TEXT_SUBTLE, marginTop: 6 },
+  subtle: { color: colours.text.muted, marginTop: 6 },
   footerSpace: { height: 0 },
 });

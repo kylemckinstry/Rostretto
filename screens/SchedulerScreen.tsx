@@ -1,15 +1,15 @@
 import * as React from 'react';
 import { StyleSheet, StatusBar, View } from 'react-native';
 
-import AutoShiftBar from '../components/AutoShiftBar';
-import AvailableEmployeesModal from '../components/AvailableEmployeesModal';
-import WeekView from '../components/WeekView';
-import DayView from '../components/DayView';
-import PreviousWeekSummary from '../components/PreviousWeekSummary';
+import AutoShiftBar from '../components/roster/AutoShiftBar';
+import AvailableEmployeesModal from '../components/modals/AvailableEmployeesModal';
+import WeekView from '../components/roster/WeekView';
+import DayView from '../components/roster/DayView';
+import PreviousWeekSummary from '../components/calendar/PreviousWeekSummary';
 
-import DateSwitch from '../components/DateSwitch';
+import DateSwitch from '../components/roster/DateSwitch';
 import IndicatorPills, { Item as IndicatorItem } from '../components/IndicatorPills';
-import DateNavigator from '../components/DateNavigator';
+import DateNavigator from '../components/calendar/DateNavigator';
 
 import CoffeeIcon from '../assets/coffee.svg';
 import SandwichIcon from '../assets/sandwich.svg';
@@ -18,10 +18,12 @@ import TrafficIcon from '../assets/traffic.svg';
 
 import { addWeeks, startOfWeek, addDays, isSameDay, weekRangeLabel, dayLabelLong } from '../utils/date';
 import { DayIndicators, Employee } from '../state/types';
-import { TimeSlotData, StaffAssignment } from '../components/TimeSlot';
+import { UIEmployee } from '../viewmodels/employees';
+import { TimeSlotData, StaffAssignment } from '../components/roster/TimeSlot';
+import { colours } from '../theme/colours';
 
 const PADDED_WRAPPER = { paddingHorizontal: 16 };
-const HEADER_GROUP = { backgroundColor: '#E7F0EB', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 10, marginTop: 16, marginBottom: 4 };
+const HEADER_GROUP = { backgroundColor: colours.brand.accent, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 10, marginTop: 16, marginBottom: 4 };
 
 function toMinutes(t: string): number {
   const m = t.trim().match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/i);
@@ -85,10 +87,10 @@ export default function SchedulerScreen() {
     setModalVisible(true);
   };
 
-  const handleAssign = ({ employee, start, end }: { employee: Employee; start: string; end: string }) => {
+  const handleAssign = ({ employee, start, end }: { employee: UIEmployee; start: string; end: string }) => {
     const startMin = toMinutes(start);
     const endMin = toMinutes(end);
-    const name = employee.name ?? `${employee.first_name} ${employee.last_name}`;
+    const name = employee.name || `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || 'Unknown';
     const role = uiRoleFromSchedulerRole(employee.primary_role);
     const tone = toneFromScore(employee.score);
 
@@ -152,19 +154,19 @@ export default function SchedulerScreen() {
 
   const pillItems: IndicatorItem[] = [
     { label: 'Mismatches', tone: mismatchTone, variant: 'value', value: String(focusedIndicators.mismatches ?? 0) },
-    { label: focusedIndicators.demand ?? '—', tone: demandTone, variant: 'icon', icon: demandIcons[(focusedIndicators.demand ?? 'Mixed') as keyof typeof demandIcons], iconColor: '#2b2b2b' },
+    { label: focusedIndicators.demand ?? '—', tone: demandTone, variant: 'icon', icon: demandIcons[(focusedIndicators.demand ?? 'Mixed') as keyof typeof demandIcons], iconColor: colours.text.secondary },
     { label: 'Traffic', tone: trafficTone, variant: 'icon', icon: TrafficIcon },
   ];
   const previousWeekPillItems: IndicatorItem[] = [
     { label: 'Mismatches', tone: 'alert', variant: 'value', value: '3' },
-    { label: 'Demand', tone: 'warn', variant: 'icon', icon: CoffeeIcon, iconColor: '#2b2b2b' },
+    { label: 'Demand', tone: 'warn', variant: 'icon', icon: CoffeeIcon, iconColor: colours.text.secondary },
     { label: 'Traffic', tone: 'warn', variant: 'icon', icon: TrafficIcon },
   ];
 
   return (
     <View style={{ flex: 1 }}>
       <StatusBar barStyle="dark-content" />
-      <View style={{ flex: 1, backgroundColor: '#fff' }}>
+      <View style={{ flex: 1, backgroundColor: colours.bg.canvas }}>
         <View style={PADDED_WRAPPER}>
           <View style={HEADER_GROUP}>
             <DateNavigator label={dateLabel} onPrev={onPrev} onNext={onNext} />

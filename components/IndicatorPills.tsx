@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { colours } from '../theme/colours';
 
 type Tone = 'good' | 'warn' | 'alert';
 type IconComp = React.ComponentType<{ width?: number; height?: number; color?: string }>;
@@ -15,9 +16,9 @@ export type Item = {
 };
 
 const TONE: Record<Tone, { fg: string }> = {
-  good: { fg: '#5CB85C' },
-  warn: { fg: '#F5A623' },
-  alert: { fg: '#E57373' },
+  good: { fg: colours.status.success },
+  warn: { fg: colours.status.warning },
+  alert: { fg: colours.status.danger },
 };
 
 export default function IndicatorPills({ items }: { items: Item[] }) {
@@ -74,7 +75,7 @@ const s = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colours.bg.canvas,
     borderWidth: 1.5,
   },
   label: {
@@ -89,7 +90,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   valueCircleText: {
-    color: '#fff',
+    color: colours.bg.canvas,
     fontWeight: 'bold',
     fontSize: 14,
   },

@@ -19,7 +19,7 @@ export default function DateSwitch({
   const screenWidth = Dimensions.get('window').width;
   const toggleWidth = screenWidth * 0.92;
 
-  // Function to determine the style for each button
+  // Button style based on active state
   const getStyle = (currentGranularity: 'weekly' | 'daily') => {
     const isActive = granularity === currentGranularity;
     return [

@@ -9,7 +9,7 @@ const MINUTES = ['00', '30'];
 const PERIODS = ['AM', 'PM'];
 const ITEM_HEIGHT = 50;
 
-// Helper to parse a time string (e.g., "9:30 AM") into a Date object
+// Parses time string (e.g., "9:30 AM") into Date object
 const parseTime = (timeStr: string): Date => {
   const date = new Date();
   const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(am|pm)/i);

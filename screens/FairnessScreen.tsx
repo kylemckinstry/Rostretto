@@ -2,6 +2,7 @@ import * as React from 'react';
 import { SafeAreaView, View, Text, StyleSheet, Pressable } from 'react-native';
 import Header from '../components/Header';
 import { ArrowUpRight } from 'lucide-react-native'; // optional
+import { colours } from '../theme/colours';
 
 export default function FairnessScreen() {
   const handleLearnMore = () => {
@@ -30,7 +31,7 @@ export default function FairnessScreen() {
           </Text>
 
           <Pressable style={s.linkRow} onPress={handleLearnMore}>
-            <ArrowUpRight width={16} height={16} color="#1B4D3E" />
+            <ArrowUpRight width={16} height={16} color={colours.brand.primary} />
             <Text style={s.link}>Learn More</Text>
           </Pressable>
         </View>
@@ -42,15 +43,15 @@ export default function FairnessScreen() {
 const s = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colours.bg.canvas,
   },
   future: {
-    color: '#1A4331',
+    color: colours.brand.primary,
     fontWeight: '700',
     fontSize: 24,
   },
   headerTitle: {
-    color: '#2b2b2b',
+    color: colours.text.secondary,
     fontWeight: '700',
     fontSize: 20,
   },
@@ -59,10 +60,10 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
-    backgroundColor: '#F0F5F2',
+    backgroundColor: colours.brand.accent,
   },
   card: {
-    backgroundColor: '#E6F0EC',
+    backgroundColor: colours.bg.canvas,
     borderRadius: 12,
     padding: 20,
     width: '100%',
@@ -71,12 +72,12 @@ const s = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1A4331',
+    color: colours.brand.primary,
     marginBottom: 8,
   },
   bodyText: {
     fontSize: 15,
-    color: '#2b2b2b',
+    color: colours.text.secondary,
     lineHeight: 22,
     marginBottom: 20,
   },
@@ -85,7 +86,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   link: {
-    color: '#1A4331',
+    color: colours.brand.primary,
     fontSize: 15,
     fontWeight: '700',
     marginLeft: 6,

@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { View, Text, StyleSheet, Image, useWindowDimensions, ImageSourcePropType } from 'react-native';
+import { colours } from '../theme/colours';
 
 export default function Header({ title, logo }: { title?: React.ReactNode; logo?: ImageSourcePropType }) {
   const { width } = useWindowDimensions();
@@ -21,7 +22,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colours.border.default,
     alignItems: 'center',
   },
   title: { fontSize: 18, fontWeight: '600' },
