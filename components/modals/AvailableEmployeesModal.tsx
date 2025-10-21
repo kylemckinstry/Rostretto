@@ -11,7 +11,11 @@ import {
   UIManager,
 } from 'react-native';
 import { useEmployeesUI, type UIEmployee } from '../../viewmodels/employees';
-import CustomTimePicker from './TimePicker';
+import { colours } from '../../theme';
+import { TIME_OPTIONS } from '../../utils/timeGeneration';
+import { ROLE_OPTIONS } from '../../constants/staffAssignment';
+import { TimePickerRow } from '../shared/TimePickerRow';
+import { RolePickerRow } from '../shared/RolePickerRow';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -22,7 +26,7 @@ type Props = {
   onClose: () => void;
   slotStart: string;
   slotEnd: string;
-  onAssign: (opts: { employee: UIEmployee; start: string; end: string }) => void;
+  onAssign: (opts: { employee: UIEmployee; start: string; end: string; role?: string }) => void;
 };
 
 export default function AvailableEmployeesModal({
@@ -34,7 +38,7 @@ export default function AvailableEmployeesModal({
 }: Props) {
   const employees = useEmployeesUI(); // UIEmployee[]
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
-  const [byIdTimes, setByIdTimes] = React.useState<Record<string, { start: string; end: string }>>(
+  const [byIdTimes, setByIdTimes] = React.useState<Record<string, { start: string; end: string; role: string }>>(
     {}
   );
 
@@ -47,7 +51,7 @@ export default function AvailableEmployeesModal({
 
   const ensureTimes = (id: string) => {
     if (!byIdTimes[id]) {
-      setByIdTimes((x) => ({ ...x, [id]: { start: slotStart, end: slotEnd } }));
+      setByIdTimes((x) => ({ ...x, [id]: { start: slotStart, end: slotEnd, role: 'Mixed' } }));
     }
   };
 
@@ -55,9 +59,9 @@ export default function AvailableEmployeesModal({
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={s.header}>
         <View style={{ width: 24 }} />
-        <Text style={s.title}>Available Employees</Text>
-        <Pressable onPress={onClose}>
-          <Text style={{ fontSize: 18 }}>✕</Text>
+        <Text style={s.title}>Available Staff</Text>
+        <Pressable onPress={onClose} style={s.closeButton} hitSlop={8}>
+          <Text style={s.closeText}>×</Text>
         </Pressable>
       </View>
 
@@ -76,7 +80,7 @@ export default function AvailableEmployeesModal({
             const score = Math.round(item.score ?? 0); // UIEmployee already 0..100
             const tone = score >= 80 ? 'good' : score >= 56 ? 'warn' : 'alert';
             const border = tone === 'good' ? '#5CB85C' : tone === 'warn' ? '#F5A623' : '#E57373';
-            const times = byIdTimes[item.id] ?? { start: slotStart, end: slotEnd };
+            const times = byIdTimes[item.id] ?? { start: slotStart, end: slotEnd, role: 'Mixed' };
             const isOpen = expandedId === item.id;
 
             const toggle = () => {
@@ -110,22 +114,50 @@ export default function AvailableEmployeesModal({
                       <TimePickerRow
                         label="Start"
                         value={times.start}
-                        onChange={(v) =>
+                        variant="mobile"
+                        onChange={(v) => {
+                          const newTimes = { ...times, start: v };
+                          // Ensure end time is after start time
+                          const startIndex = TIME_OPTIONS.findIndex(t => t === v);
+                          const endIndex = TIME_OPTIONS.findIndex(t => t === times.end);
+                          if (endIndex <= startIndex && startIndex < TIME_OPTIONS.length - 1) {
+                            newTimes.end = TIME_OPTIONS[startIndex + 1];
+                          }
                           setByIdTimes((x) => ({
                             ...x,
-                            [item.id]: { ...times, start: v },
-                          }))
-                        }
+                            [item.id]: newTimes,
+                          }));
+                        }}
                       />
                       <TimePickerRow
                         label="End"
                         value={times.end}
-                        onChange={(v) =>
+                        variant="mobile"
+                        onChange={(v) => {
+                          const newTimes = { ...times, end: v };
+                          // Ensure end time is after start time
+                          const startIndex = TIME_OPTIONS.findIndex(t => t === times.start);
+                          const endIndex = TIME_OPTIONS.findIndex(t => t === v);
+                          if (endIndex <= startIndex && startIndex > 0) {
+                            newTimes.start = TIME_OPTIONS[startIndex - 1];
+                          }
                           setByIdTimes((x) => ({
                             ...x,
-                            [item.id]: { ...times, end: v },
-                          }))
-                        }
+                            [item.id]: newTimes,
+                          }));
+                        }}
+                        minTime={times.start}
+                      />
+                      <RolePickerRow
+                        label="Role"
+                        value={times.role}
+                        variant="mobile"
+                        onChange={(v) => {
+                          setByIdTimes((x) => ({
+                            ...x,
+                            [item.id]: { ...times, role: v },
+                          }));
+                        }}
                       />
 
                       <Pressable
@@ -134,6 +166,7 @@ export default function AvailableEmployeesModal({
                             employee: item,
                             start: times.start,
                             end: times.end,
+                            role: times.role,
                           })
                         }
                         style={s.assignBtn}
@@ -152,42 +185,7 @@ export default function AvailableEmployeesModal({
   );
 }
 
-// Inline time row using your CustomTimePicker
-function TimePickerRow({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (formatted: string) => void;
-}) {
-  const [isVisible, setVisible] = React.useState(false);
 
-  const formatTime = (date: Date) =>
-    date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-
-  const handleConfirm = (date: Date) => {
-    onChange(formatTime(date));
-    setVisible(false);
-  };
-
-  return (
-    <View style={s.fieldRow}>
-      <Text style={s.label}>{label}</Text>
-      <Pressable onPress={() => setVisible(true)} style={[s.input, { justifyContent: 'center' }]}>
-        <Text style={{ color: '#2D2D2D', fontSize: 16 }}>{value}</Text>
-      </Pressable>
-
-      <CustomTimePicker
-        isVisible={isVisible}
-        onClose={() => setVisible(false)}
-        onConfirm={handleConfirm}
-        initialValue={value}
-      />
-    </View>
-  );
-}
 
 const s = StyleSheet.create({
   header: {
@@ -263,4 +261,24 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   assignBtnText: { color: '#FFFFFF', fontWeight: '800', fontSize: 17 },
+
+  // Close button styles (matching web version)
+  closeButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colours.border.default,
+    backgroundColor: colours.bg.canvas,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  closeText: {
+    color: colours.text.primary,
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 14,
+  },
+
+
 });

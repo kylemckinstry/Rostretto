@@ -1,4 +1,4 @@
-// components/TimeSlot.tsx
+// Web-specific time slot component with selection visual feedback
 import * as React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { colours } from '../../theme/colours';
@@ -20,32 +20,29 @@ export type TimeSlotData = {
 
 type Props = {
   slot: TimeSlotData;
-
-  // Open the AvailableEmployeesModal with this slot preselected
   onAddStaff: (slot: TimeSlotData) => void;
-
-  // Optional: remove a staff member from this slot
   onRemoveStaff?: (slotId: string, staffIndex: number, staffName: string) => void;
+  isSelected?: boolean;
 };
 
-// Border colour based on tone
+// Colour based on staff assignment tone
 function getColor(tone: 'good' | 'warn' | 'alert') {
   if (tone === 'alert') return colours.status.danger;
   if (tone === 'warn') return colours.status.warning;
   return colours.status.success;
 }
 
-export default function TimeSlot({ slot, onAddStaff, onRemoveStaff }: Props) {
+export default function TimeSlotWeb({ slot, onAddStaff, onRemoveStaff, isSelected = false }: Props) {
   const hasMismatches = slot.mismatches > 0;
 
   const indicatorStyle = hasMismatches ? s.alertIndicator : s.goodIndicator;
   const indicatorSymbol = hasMismatches ? '!' : '✓';
 
   return (
-    <View style={s.wrap}>
-      {/* Top row with time and status indicator */}
+    <View style={[s.wrap, isSelected && s.wrapSelected]}>
+      {/* Time range and status indicator */}
       <View style={s.topRow}>
-        <Text style={s.timeText}>
+        <Text style={[s.timeText, isSelected && s.timeTextSelected]}>
           {slot.startTime} - {slot.endTime}
         </Text>
         <View style={[s.indicator, indicatorStyle]}>
@@ -55,7 +52,7 @@ export default function TimeSlot({ slot, onAddStaff, onRemoveStaff }: Props) {
         </View>
       </View>
 
-      {/* Staff list + Add */}
+      {/* Staff assignments and add button */}
       <View style={s.contentWrap}>
         {slot.assignedStaff.map((staff, index) => (
           <View
@@ -77,12 +74,12 @@ export default function TimeSlot({ slot, onAddStaff, onRemoveStaff }: Props) {
 
         <Pressable
           onPress={() => onAddStaff(slot)}
-          style={s.addButton}
+          style={[s.addButton, isSelected && s.addButtonSelected]}
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel="Add staff to this time slot"
         >
-          <Text style={s.addButtonText}>+</Text>
+          <Text style={[s.addButtonText, isSelected && s.addButtonTextSelected]}>+</Text>
         </Pressable>
       </View>
     </View>
@@ -95,7 +92,15 @@ const s = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     marginBottom: 12,
-  },
+    borderWidth: 1,
+    borderColor: colours.border.default,
+    boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
+  } as any,
+  wrapSelected: {
+    borderColor: colours.brand.primary,
+    backgroundColor: colours.bg.canvas,
+    boxShadow: '0 2px 8px rgba(26, 67, 49, 0.1)',
+  } as any,
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -106,6 +111,10 @@ const s = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: colours.text.primary,
+  },
+  timeTextSelected: {
+    color: colours.brand.primary,
+    fontWeight: '600',
   },
   contentWrap: {
     gap: 8,
@@ -159,10 +168,19 @@ const s = StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: colours.bg.canvas,
+  },
+  addButtonSelected: {
+    borderColor: colours.brand.primary,
+    backgroundColor: colours.bg.canvas,
   },
   addButtonText: {
     fontSize: 20,
     color: colours.text.muted,
     lineHeight: 20,
+  },
+  addButtonTextSelected: {
+    color: colours.brand.primary,
+    fontWeight: '600',
   },
 });

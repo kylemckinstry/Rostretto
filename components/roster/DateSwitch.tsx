@@ -1,8 +1,8 @@
-// components/DateSwitch.tsx
+// Toggle switch for daily/weekly view
 import * as React from 'react';
 import { View, Text, StyleSheet, Pressable, Dimensions } from 'react-native';
 
-// Define the inactive background colour for clarity
+// Background colour when button is not selected
 const INACTIVE_BG = '#F4F4F1';
 const ACTIVE_BG = '#1A4331';
 
@@ -19,12 +19,12 @@ export default function DateSwitch({
   const screenWidth = Dimensions.get('window').width;
   const toggleWidth = screenWidth * 0.92;
 
-  // Button style based on active state
+  // Choose button appearance based on selection
   const getStyle = (currentGranularity: 'weekly' | 'daily') => {
     const isActive = granularity === currentGranularity;
     return [
       s.toggle,
-      // Use a full object override to guarantee the background colour is set last
+      // Override background to ensure correct colour
       { backgroundColor: isActive ? ACTIVE_BG : INACTIVE_BG },
     ];
   };
@@ -32,22 +32,22 @@ export default function DateSwitch({
   return (
     <View style={[s.wrap, fluid ? { width: '100%' } : { width: toggleWidth }]}>
       <Pressable
-        onPress={() => onGranularityChange('weekly')}
-        style={getStyle('weekly')} // Apply guaranteed style
-        android_ripple={{ color: '#e0f2fe' }}
-      >
-        <Text style={[s.toggleText, granularity === 'weekly' && s.toggleTextActive]}>
-          Weekly
-        </Text>
-      </Pressable>
-
-      <Pressable
         onPress={() => onGranularityChange('daily')}
-        style={getStyle('daily')} // Apply guaranteed style
+        style={getStyle('daily')} // Get styling for daily button
         android_ripple={{ color: '#e0f2fe' }}
       >
         <Text style={[s.toggleText, granularity === 'daily' && s.toggleTextActive]}>
           Daily
+        </Text>
+      </Pressable>
+
+      <Pressable
+        onPress={() => onGranularityChange('weekly')}
+        style={getStyle('weekly')} // Get styling for weekly button
+        android_ripple={{ color: '#e0f2fe' }}
+      >
+        <Text style={[s.toggleText, granularity === 'weekly' && s.toggleTextActive]}>
+          Weekly
         </Text>
       </Pressable>
     </View>
@@ -59,12 +59,12 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignSelf: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'transparent', // parent owns tint
+    backgroundColor: 'transparent', // Parent handles background
     borderRadius: 10,
     overflow: 'hidden',
     marginVertical: 6,
     borderWidth: 1,
-    borderColor: '#D1D5DB', // Grey border around the whole switch
+    borderColor: '#D1D5DB', // Light grey border
   },
   toggle: {
     flex: 1,

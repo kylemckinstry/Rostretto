@@ -1,8 +1,8 @@
 import * as React from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Dimensions, Animated, Pressable } from 'react-native';
 import { colours } from '../../theme/colours';
 
-// SVG icons for demand and traffic visualisation
+// Icons for displaying demand and traffic levels
 import TrafficIcon from '../../assets/traffic.svg';
 import CoffeeIcon from '../../assets/coffee.svg';
 import SandwichIcon from '../../assets/sandwich.svg';
@@ -15,8 +15,16 @@ export type WeekForecastDay = {
   traffic: 'Low' | 'Medium' | 'High';
 };
 
-export default function WeekForecastGrid({ days }: { days: WeekForecastDay[] }) {
+interface WeekForecastGridProps {
+  days: WeekForecastDay[];
+  onDayPress?: (date: Date) => void;
+}
+
+export default function WeekForecastGrid({ days, onDayPress }: WeekForecastGridProps) {
   const [screenWidth, setScreenWidth] = React.useState(() => Dimensions.get('window').width);
+  const slideAnim = React.useRef(new Animated.Value(0)).current;
+  const opacityAnim = React.useRef(new Animated.Value(1)).current;
+  const prevWeekRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -25,28 +33,54 @@ export default function WeekForecastGrid({ days }: { days: WeekForecastDay[] }) 
     return () => subscription?.remove();
   }, []);
 
-  // Calculate optimal layout mode based on available screen width
+  // Animate week transitions with slide and fade effect
+  React.useEffect(() => {
+    if (days.length > 0) {
+      const currentWeekKey = days[0]?.date.toISOString().slice(0, 10);
+      if (prevWeekRef.current && prevWeekRef.current !== currentWeekKey) {
+        // Subtle slide with dimming provides clear visual feedback for week changes
+        slideAnim.setValue(-8);
+        opacityAnim.setValue(0.3);
+        
+        Animated.parallel([
+          Animated.timing(slideAnim, {
+            toValue: 0,
+            duration: 290,
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacityAnim, {
+            toValue: 1,
+            duration: 290,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }
+      prevWeekRef.current = currentWeekKey;
+    }
+  }, [days, slideAnim, opacityAnim]);
+
+  // Determine layout: horizontal scroll for narrow screens, grid for wider displays
   const minCardWidth = 140;
   const gap = 12;
   const horizontalPadding = 32;
   const totalMinWidth = (minCardWidth * 7) + (gap * 6) + horizontalPadding;
   const useHorizontalScroll = screenWidth < totalMinWidth;
 
-  // Icon mapping for demand type visualisation
+  // Icons corresponding to demand types
   const demandIcons: Record<WeekForecastDay['demand'], React.FC<any>> = {
     Coffee: CoffeeIcon,
     Sandwiches: SandwichIcon,
     Mixed: MixedIcon,
   };
 
-  // Render day card content (shared between scroll and grid layouts)
+  // Render individual day cards with optional press interaction
   const renderDayCard = (day: WeekForecastDay, index: number, style: any) => {
     const DemandIcon = demandIcons[day.demand];
     const mismatchColor = getMismatchColor(day.mismatches);
     const trafficIconColor = trafficColor(day.traffic);
 
-    return (
-      <View key={index} style={style}>
+    const cardContent = (
+      <>
         <Text style={s.dayTitle}>
           {day.date.toLocaleDateString(undefined, { weekday: 'long' })}
         </Text>
@@ -69,48 +103,77 @@ export default function WeekForecastGrid({ days }: { days: WeekForecastDay[] }) 
 
         <View style={s.row}>
           <View style={s.iconContainer}>
-            <DemandIcon width={16} height={16} color={colours.text.secondary} />
+            <DemandIcon width={18} height={18} color={colours.text.secondary} />
           </View>
           <Text style={s.label}>Demand: {day.demand}</Text>
         </View>
 
         <View style={s.row}>
           <View style={s.iconContainer}>
-            <TrafficIcon width={16} height={16} color={trafficIconColor} />
+            <TrafficIcon width={18} height={18} color={trafficIconColor} />
           </View>
           <Text style={[s.label, { color: trafficIconColor, fontWeight: '600' }]}>
             {day.traffic} Traffic
           </Text>
         </View>
+      </>
+    );
+
+    if (onDayPress) {
+      return (
+        <Pressable 
+          key={index} 
+          style={({ pressed }) => [
+            style,
+            pressed && s.cardPressed
+          ]}
+          onPress={() => onDayPress(day.date)}
+        >
+          {cardContent}
+        </Pressable>
+      );
+    }
+
+    return (
+      <View key={index} style={style}>
+        {cardContent}
       </View>
     );
   };
 
   if (useHorizontalScroll) {
-    // Horizontal scroll layout for constrained screen widths
+    // Horizontal scrolling layout for compact displays
     return (
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={true}
-        contentContainerStyle={s.scrollContent}
-        style={s.scrollContainer}
-      >
-        <View style={s.wrapScroll}>
-          {days.map((day, index) => renderDayCard(day, index, s.cardFixed))}
-        </View>
-      </ScrollView>
+      <Animated.View style={{ 
+        transform: [{ translateX: slideAnim }],
+        opacity: opacityAnim 
+      }}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={true}
+          contentContainerStyle={s.scrollContent}
+          style={s.scrollContainer}
+        >
+          <View style={s.wrapScroll}>
+            {days.map((day, index) => renderDayCard(day, index, s.cardFixed))}
+          </View>
+        </ScrollView>
+      </Animated.View>
     );
   }
 
-  // Flexible grid layout for wider screens
+  // Responsive grid layout for wider screens
   return (
-    <View style={s.wrapFull}>
+    <Animated.View style={[s.wrapFull, { 
+      transform: [{ translateX: slideAnim }],
+      opacity: opacityAnim 
+    }]}>
       {days.map((day, index) => renderDayCard(day, index, s.cardFlex))}
-    </View>
+    </Animated.View>
   );
 }
 
-// Colour logic matching mobile DayTile component behaviour
+// Colour coding for mismatch severity and traffic levels
 export function getMismatchColor(mismatches: number) {
   if (mismatches <= 1) return colours.status.success;
   if (mismatches === 2) return colours.status.warning;
@@ -123,12 +186,8 @@ export function trafficColor(t: 'Low' | 'Medium' | 'High') {
   return colours.status.success;
 }
 
-
-
-
-
 const s = StyleSheet.create({
-  // Desktop layout: cards expand to fill available width
+  // Flexible grid container for wide displays
   wrapFull: {
     flexDirection: 'row',
     gap: 12,
@@ -144,7 +203,7 @@ const s = StyleSheet.create({
     boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
   } as unknown as any,
   
-  // Mobile layout: horizontal scroll with fixed-width cards
+  // Horizontal scroll containers for compact layouts
   scrollContainer: {
     flex: 1,
   },
@@ -168,12 +227,12 @@ const s = StyleSheet.create({
     boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
   } as unknown as any,
   
-  // Common styles for both layouts
+  // Typography and layout styles for day cards
   dayTitle: { fontSize: 14, fontWeight: '700', color: colours.text.primary },
-  daySub: { fontSize: 12, opacity: 0.7, marginTop: 2, color: colours.text.muted },
-  hr: { height: 1, backgroundColor: colours.border.default, marginVertical: 10 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
-  label: { fontSize: 12, color: colours.text.secondary },
+  daySub: { fontSize: 14, opacity: 0.7, marginTop: 2, color: '#2b2b2b' },
+  hr: { height: 1, backgroundColor: colours.border.default, marginVertical: 18 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 },
+  label: { fontSize: 14, color: colours.text.secondary },
   statusCircle: {
     width: 18,
     height: 18,
@@ -187,10 +246,14 @@ const s = StyleSheet.create({
     fontSize: 10,
   },
   iconContainer: {
-    width: 18,
-    height: 18,
+    width: 20, // Icon size
+    height: 20, // Icon size
     alignItems: 'center',
     justifyContent: 'center',
   },
+  cardPressed: {
+    opacity: 0.7,
+    transform: [{ scale: 0.98 }],
+  } as any,
 
 });

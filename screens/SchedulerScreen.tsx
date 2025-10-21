@@ -3,6 +3,7 @@ import { StyleSheet, StatusBar, View } from 'react-native';
 
 import AutoShiftBar from '../components/roster/AutoShiftBar';
 import AvailableEmployeesModal from '../components/modals/AvailableEmployeesModal';
+import RemoveStaffConfirmModal from '../components/modals/RemoveStaffConfirmModal';
 import WeekView from '../components/roster/WeekView';
 import DayView from '../components/roster/DayView';
 import PreviousWeekSummary from '../components/calendar/PreviousWeekSummary';
@@ -21,59 +22,14 @@ import { DayIndicators, Employee } from '../state/types';
 import { UIEmployee } from '../viewmodels/employees';
 import { TimeSlotData, StaffAssignment } from '../components/roster/TimeSlot';
 import { colours } from '../theme/colours';
+import { toMinutes, scoreToTone, roleToDisplayName } from '../helpers/timeUtils';
+import { generateTimeSlots } from '../helpers/schedulerIO';
 
 const PADDED_WRAPPER = { paddingHorizontal: 16 };
 const HEADER_GROUP = { backgroundColor: colours.brand.accent, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 10, marginTop: 16, marginBottom: 4 };
 
-function toMinutes(t: string): number {
-  const m = t.trim().match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/i);
-  if (!m) return 0;
-  let h = parseInt(m[1], 10);
-  const min = parseInt(m[2], 10);
-  const ampm = m[3].toLowerCase();
-  if (ampm === 'pm' && h !== 12) h += 12;
-  if (ampm === 'am' && h === 12) h = 0;
-  return h * 60 + min;
-}
-function toneFromScore(score?: number): 'good' | 'warn' | 'alert' {
-  const pct = Math.round((score ?? 0) * 100);
-  if (pct >= 80) return 'good';
-  if (pct >= 56) return 'warn';
-  return 'alert';
-}
-function uiRoleFromSchedulerRole(sr: string): string {
-  if (sr === 'BARISTA') return 'Coffee';
-  if (sr === 'SANDWICH') return 'Sandwich';
-  if (sr === 'WAITER') return 'Cashier';
-  return 'Manager';
-}
-
-// Generate demo time slots for day view
-function generateTimeSlots(): TimeSlotData[] {
-  const out: TimeSlotData[] = [];
-  const startHour = 9;
-  const endHour = 12;
-  for (let h = startHour; h < endHour; h++) {
-    for (const m of [0, 30]) {
-      const start = new Date(0, 0, 0, h, m);
-      const end = new Date(0, 0, 0, h, m + 30);
-      const fmt = (d: Date) =>
-        d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).replace(' ', '');
-      out.push({
-        id: `${h}-${m}`,
-        startTime: fmt(start),
-        endTime: fmt(end),
-        assignedStaff: [],
-        demand: null,
-        mismatches: 0,
-      });
-    }
-  }
-  return out;
-}
-
 export default function SchedulerScreen() {
-  const [mode, setMode] = React.useState<'week' | 'day'>('week');
+  const [mode, setMode] = React.useState<'week' | 'day'>('day');
   const [anchorDate, setAnchorDate] = React.useState(new Date());
   const [selectedDate, setSelectedDate] = React.useState<Date | null>(null);
 
@@ -81,29 +37,41 @@ export default function SchedulerScreen() {
   const [slots, setSlots] = React.useState<TimeSlotData[]>(() => generateTimeSlots());
   const [modalVisible, setModalVisible] = React.useState(false);
   const [activeSlot, setActiveSlot] = React.useState<TimeSlotData | null>(null);
+  
+  // Remove staff confirmation modal state
+  const [removeConfirm, setRemoveConfirm] = React.useState<{
+    slotId: string;
+    staffIndex: number;
+    staffName: string;
+  } | null>(null);
 
   const openModalForSlot = (slot: TimeSlotData) => {
     setActiveSlot(slot);
     setModalVisible(true);
   };
 
-  const handleAssign = ({ employee, start, end }: { employee: UIEmployee; start: string; end: string }) => {
+  const handleAssign = ({ employee, start, end, role }: { employee: UIEmployee; start: string; end: string; role?: string }) => {
+    const name = employee.name || `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || 'Unknown';
+    const assignedRole = role || roleToDisplayName(employee.primary_role);
+    const tone = scoreToTone(employee.score);
+
+    // Convert to minutes for range checking
     const startMin = toMinutes(start);
     const endMin = toMinutes(end);
-    const name = employee.name || `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || 'Unknown';
-    const role = uiRoleFromSchedulerRole(employee.primary_role);
-    const tone = toneFromScore(employee.score);
 
     setSlots((prev) =>
       prev.map((s) => {
-        const sStart = toMinutes(s.startTime);
-        const sEnd = toMinutes(s.endTime);
-        const within = sStart >= startMin && sEnd <= endMin; // Slot within assignment range
-        if (!within) return s;
-        if (s.assignedStaff.some((a) => a.name === name)) return s;
-
-        const next: StaffAssignment = { name, role, tone };
-        return { ...s, assignedStaff: [...s.assignedStaff, next] };
+        const slotStartMin = toMinutes(s.startTime);
+        
+        // Assign to all slots that start within the time range
+        if (slotStartMin >= startMin && slotStartMin < endMin) {
+          // Don't add duplicate assignments
+          if (s.assignedStaff.some((a) => a.name === name)) return s;
+          
+          const next: StaffAssignment = { name, role: assignedRole, tone };
+          return { ...s, assignedStaff: [...s.assignedStaff, next] };
+        }
+        return s;
       })
     );
 
@@ -111,10 +79,32 @@ export default function SchedulerScreen() {
     setActiveSlot(null);
   };
 
-  const removeFromSlot = (slotId: string, staffIndex: number) => {
+  const removeFromSlot = (slotId: string, staffIndex: number, staffName: string) => {
+    // Show confirmation modal
+    setRemoveConfirm({ slotId, staffIndex, staffName });
+  };
+
+  const handleRemoveAll = () => {
+    if (!removeConfirm) return;
+    
     setSlots((prev) =>
-      prev.map((s) => (s.id === slotId ? { ...s, assignedStaff: s.assignedStaff.filter((_, i) => i !== staffIndex) } : s))
+      prev.map((s) => ({
+        ...s,
+        assignedStaff: s.assignedStaff.filter((staff) => staff.name !== removeConfirm.staffName),
+      }))
     );
+    
+    setRemoveConfirm(null);
+  };
+
+  const handleRemoveOne = () => {
+    if (!removeConfirm) return;
+    
+    setSlots((prev) =>
+      prev.map((s) => (s.id === removeConfirm.slotId ? { ...s, assignedStaff: s.assignedStaff.filter((_, i) => i !== removeConfirm.staffIndex) } : s))
+    );
+    
+    setRemoveConfirm(null);
   };
 
   const bottomOffset = 16;
@@ -203,9 +193,17 @@ export default function SchedulerScreen() {
       <AvailableEmployeesModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
-        slotStart={activeSlot?.startTime ?? '9:00 am'}
-        slotEnd={activeSlot?.endTime ?? '3:00 pm'}
+        slotStart={activeSlot?.startTime ?? '6:00 am'}
+        slotEnd={activeSlot?.endTime ?? '4:00 pm'}
         onAssign={handleAssign}
+      />
+
+      <RemoveStaffConfirmModal
+        visible={!!removeConfirm}
+        staffName={removeConfirm?.staffName ?? ''}
+        onRemoveAll={handleRemoveAll}
+        onRemoveOne={handleRemoveOne}
+        onCancel={() => setRemoveConfirm(null)}
       />
     </View>
   );

@@ -1,5 +1,6 @@
 import * as React from 'react';
 import Svg, { Polygon, Line, Text as SvgText, Circle } from 'react-native-svg';
+import { colours } from '../../theme/colours';
 
 type Props = {
   size?: number;              // canvas size
@@ -15,9 +16,11 @@ export default function Radar({
   gridSteps = 4,
 }: Props) {
   const count = labels.length;
-  const cx = size / 2;
-  const cy = size / 2;
-  const radius = (size * 0.38); // leave room for labels
+  const padding = 50; // Extra space for labels
+  const svgSize = size + (padding * 2);
+  const cx = svgSize / 2;
+  const cy = svgSize / 2;
+  const radius = (size * 0.35); // Radar chart radius
 
   const angleFor = (i: number) => (-Math.PI / 2) + (i * 2 * Math.PI) / count;
 
@@ -37,7 +40,7 @@ export default function Radar({
     .join(' ');
 
   return (
-    <Svg width={size} height={size}>
+    <Svg width={svgSize} height={svgSize}>
       {/* grid rings */}
       {gridPolys.map((pts, idx) => (
         <Polygon
@@ -69,17 +72,19 @@ export default function Radar({
 
       {/* axis labels */}
       {labels.map((label, i) => {
-        const [x, y] = pointAt(i, radius + 16);
-        const align = x < cx - 8 ? 'end' : x > cx + 8 ? 'start' : 'middle';
-        const dy = y < cy ? -4 : 12;
+        const [x, y] = pointAt(i, radius + 18);
+        const align = x < cx - 10 ? 'end' : x > cx + 10 ? 'start' : 'middle';
+        const dy = y < cy - 10 ? -6 : y > cy + 10 ? 16 : 5;
         return (
           <SvgText
             key={`t${i}`}
             x={x}
             y={y + dy}
-            fontSize={11}
-            fill="#5B636A"
+            fontSize={12}
+            fill={colours.text.primary}
             textAnchor={align as any}
+            fontWeight="600"
+            fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
           >
             {label}
           </SvgText>

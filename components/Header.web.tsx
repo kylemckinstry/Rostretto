@@ -10,8 +10,19 @@ import FairnessIcon from '../assets/fairness.svg';
 export default function Header() {
   const nav = useNavigation();
   const route = useRoute();
-  const activeRoute = route.name;
   const { width } = useWindowDimensions();
+  
+  // Get the active route - check parent route for nested navigators
+  const getActiveTab = () => {
+    const routeName = route.name;
+    // Direct tab routes
+    if (routeName === 'Roster' || routeName === 'Fairness') return routeName;
+    // Nested Team navigator routes
+    if (routeName === 'CapabilitiesMain' || routeName === 'Employee') return 'Team';
+    return routeName;
+  };
+  
+  const activeRoute = getActiveTab();
   
   // Responsive breakpoints
   const isCompact = width < 900;
@@ -26,7 +37,18 @@ export default function Header() {
   const handlePress = (key: string) => {
     // If tab already active, ignore
     if (key === activeRoute) return;
-    nav.navigate(key as never);
+    
+    // For Team tab, use reset to ensure we go to CapabilitiesMain
+    if (key === 'Team') {
+      (nav as any).navigate('Team', { screen: 'CapabilitiesMain' });
+    } else {
+      nav.navigate(key as never);
+    }
+  };
+
+  const handleLogoPress = () => {
+    // Navigate to Roster with day view
+    nav.navigate('Roster' as never);
   };
 
   return (
@@ -35,9 +57,9 @@ export default function Header() {
         // Compact layout: vertical stack
         <View style={s.compactLayout}>
           {/* Logo row */}
-          <View style={s.logoRow}>
+          <Pressable onPress={handleLogoPress} style={s.logoRow}>
             <RostrettoLogo width={width * 0.3} height={(width * 0.3) * 0.2} />
-          </View>
+          </Pressable>
           
           {/* Tabs row */}
           <View style={s.tabsRow}>
@@ -81,9 +103,9 @@ export default function Header() {
         // Desktop layout: horizontal
         <>
           {/* Left: logo */}
-          <View style={s.left}>
+          <Pressable onPress={handleLogoPress} style={s.left}>
             <RostrettoLogo width={160} height={32} />
-          </View>
+          </Pressable>
 
           {/* Center: tabs */}
           <View style={s.center}>
@@ -152,6 +174,11 @@ const s = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     marginBottom: 12,
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+      },
+    }),
   },
   tabsRow: {
     flexDirection: 'row',
@@ -160,7 +187,15 @@ const s = StyleSheet.create({
     gap: 8,
     width: '100%',
   },
-  left: { width: 240, justifyContent: 'center' },
+  left: { 
+    width: 240, 
+    justifyContent: 'center',
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+      },
+    }),
+  },
   center: {
     flex: 1,
     flexDirection: 'row',

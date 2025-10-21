@@ -43,20 +43,6 @@ export default function DateSwitchWeb({
   return (
     <View style={[s.wrap, isCompact && s.wrapCompact, { width: getToggleWidth() }]}>
       <Pressable
-        onPress={() => onGranularityChange('weekly')}
-        style={getStyle('weekly')}
-        android_ripple={{ color: '#e0f2fe' }}
-      >
-        <Text style={[
-          s.toggleText, 
-          isCompact && s.toggleTextCompact,
-          granularity === 'weekly' && s.toggleTextActive
-        ]}>
-          {isSmall ? 'Week' : 'Weekly'}
-        </Text>
-      </Pressable>
-
-      <Pressable
         onPress={() => onGranularityChange('daily')}
         style={getStyle('daily')}
         android_ripple={{ color: '#e0f2fe' }}
@@ -67,6 +53,20 @@ export default function DateSwitchWeb({
           granularity === 'daily' && s.toggleTextActive
         ]}>
           {isSmall ? 'Day' : 'Daily'}
+        </Text>
+      </Pressable>
+
+      <Pressable
+        onPress={() => onGranularityChange('weekly')}
+        style={getStyle('weekly')}
+        android_ripple={{ color: '#e0f2fe' }}
+      >
+        <Text style={[
+          s.toggleText, 
+          isCompact && s.toggleTextCompact,
+          granularity === 'weekly' && s.toggleTextActive
+        ]}>
+          {isSmall ? 'Week' : 'Weekly'}
         </Text>
       </Pressable>
     </View>

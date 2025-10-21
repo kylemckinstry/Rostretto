@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { colours } from '../../theme/colours';
 
 export default function CollapsibleSection({
   title,
@@ -16,7 +17,9 @@ export default function CollapsibleSection({
     <View style={s.wrap}>
       <Pressable style={s.header} onPress={onToggle} hitSlop={8}>
         <Text style={s.title}>{title}</Text>
-        <Text style={s.chev}>{open ? '▾' : '▸'}</Text>
+        <View style={s.chevronBox}>
+          <Text style={s.chevron}>{open ? '▲' : '▼'}</Text>
+        </View>
       </Pressable>
       {open ? <View style={s.body}>{children}</View> : null}
     </View>
@@ -38,6 +41,22 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   title: { fontSize: 16, fontWeight: '700', color: '#171A1F', flex: 1 },
-  chev: { fontSize: 18, color: '#5B636A' },
+  chevronBox: {
+    padding: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chevron: {
+    fontSize: 10,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colours.border.default,
+    textAlign: 'center',
+    lineHeight: 18,
+    color: colours.text.secondary,
+    backgroundColor: colours.bg.canvas,
+  },
   body: { marginTop: 12 },
 });

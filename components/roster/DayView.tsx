@@ -19,7 +19,7 @@ export default function DayView({
   indicators: { mismatches: number; demand: 'Coffee' | 'Sandwich' | 'Mixed'; traffic: 'low' | 'medium' | 'high' };
   slots: TimeSlotData[];
   onAddStaff: (slot: TimeSlotData) => void;
-  onRemoveStaff: (slotId: string, staffIndex: number) => void;
+  onRemoveStaff: (slotId: string, staffIndex: number, staffName: string) => void;
 }) {
   const demandIcons = { Coffee: CoffeeIcon, Sandwich: SandwichIcon, Mixed: MixedIcon } as const;
 

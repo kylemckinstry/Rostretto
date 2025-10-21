@@ -1,31 +1,52 @@
-// Web-optimised scheduler screen with responsive design and forecast metrics
 import * as React from 'react';
 import { View, Text, StyleSheet, Pressable, Platform, ScrollView, useWindowDimensions } from 'react-native';
 import { addDays, addWeeks, startOfWeek } from '../utils/date';
-import Header from '../components/Header'; // Automatically loads Header.web.tsx on web platform
+import Header from '../components/Header'; // Automatically resolves to web-specific header component
 import { colours } from '../theme/colours';
 import { DayIndicators } from '../state/types';
+import { TimeSlotData } from '../components/web/TimeSlot.web';
+import { scoreToTone } from '../helpers/timeUtils';
+import { generateTimeSlots, generateTimeOptions } from '../helpers/schedulerIO';
 
-// Web-specific components with responsive grid layouts
+// Web-optimised components with responsive breakpoints
 import WeekForecastGrid, { WeekForecastDay } from '../components/web/WeekForecastGrid';
 import AvailableStaffList, { StaffBubble } from '../components/web/AvailableStaffList';
 import MetricsRow, { MetricCard } from '../components/web/MetricsRow';
+import AvailableStaffSidebar from '../components/web/AvailableStaffSidebar';
+import AvailableEmployeesModal from '../components/modals/AvailableEmployeesModal';
+import RemoveStaffConfirmModal from '../components/modals/RemoveStaffConfirmModal';
 import { MOCK_EMPLOYEES } from '../data/mock/employees';
 
-// Shared mobile components with platform-specific overrides
+// Cross-platform components compatible with web
 import DateSwitch from '../components/roster/DateSwitch';
 import DateNavigator from '../components/calendar/DateNavigator';
+import TimeSlotWeb from '../components/web/TimeSlot.web';
+import type { UIEmployee } from '../viewmodels/employees';
+
+const TIME_OPTIONS = generateTimeOptions();
 
 export default function SchedulerScreenWeb() {
   const [anchorDate, setAnchorDate] = React.useState(new Date());
-  const [isStaffExpanded, setIsStaffExpanded] = React.useState(true);
+  const [isStaffExpanded, setIsStaffExpanded] = React.useState(false);
+  const [granularity, setGranularity] = React.useState<'weekly' | 'daily'>('daily');
   const { width } = useWindowDimensions();
   
-  // Responsive breakpoints matching Header.web.tsx for consistent layout behaviour
+  // Daily scheduling state management
+  const [selectedSlot, setSelectedSlot] = React.useState<TimeSlotData | null>(null);
+  const [timeSlots, setTimeSlots] = React.useState<TimeSlotData[]>(generateTimeSlots());
+  
+  // Remove staff confirmation modal state
+  const [removeConfirm, setRemoveConfirm] = React.useState<{
+    slotId: string;
+    staffIndex: number;
+    staffName: string;
+  } | null>(null);
+  
+  // Responsive breakpoints for adaptive layout behaviour
   const isCompact = width < 900;
   const isSmall = width < 640;
 
-  // Mock weekly data structure to demonstrate forecast functionality
+  // Sample weekly data for the forecast
   const weekStart = startOfWeek(anchorDate);
   const mkKey = (d: Date) => d.toISOString().slice(0, 10);
   const weekIndicators: Record<string, DayIndicators> = {
@@ -38,13 +59,13 @@ export default function SchedulerScreenWeb() {
     [mkKey(addDays(weekStart, 6))]: { mismatches: 0, demand: 'Mixed', traffic: 'low' },
   };
 
-  // Transform data structure for web forecast grid component compatibility
+  // Transform week data for forecast grid component
   const weekDays: WeekForecastDay[] = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(weekStart, i);
     const key = mkKey(d);
     const indicators = weekIndicators[key] || { mismatches: 0, demand: 'Mixed', traffic: 'medium' };
     
-    // Map mobile enum types to web component string expectations
+    // Map internal status types to display strings
     const trafficMapping = { low: 'Low', medium: 'Medium', high: 'High' } as const;
     const demandMapping = { Coffee: 'Coffee', Sandwich: 'Sandwiches', Mixed: 'Mixed' } as const;
     
@@ -56,14 +77,12 @@ export default function SchedulerScreenWeb() {
     };
   });
 
-
-
-  // Transform mock employee data for staff bubble display
+  // Process employee data for staff availability display
   const staff: StaffBubble[] = MOCK_EMPLOYEES.map(emp => {
-    // Extract initials from first and last name
+    // Get first letters of first and last name
     const initials = `${emp.first_name.charAt(0)}${emp.last_name.charAt(0)}`.toUpperCase();
     
-    // Map fairness colour to visual tone for border styling
+    // Convert fairness colour to simple border colour
     const toneMapping = { 
       'green': 'good' as const, 
       'yellow': 'warn' as const, 
@@ -77,6 +96,105 @@ export default function SchedulerScreenWeb() {
     };
   });
 
+  // Functions for daily view interactions
+  const handleAddStaff = (slot: TimeSlotData) => {
+    // Click same slot to deselect it
+    if (selectedSlot?.id === slot.id) {
+      setSelectedSlot(null);
+    } else {
+      setSelectedSlot(slot);
+    }
+  };
+
+  const handleCancelAssignment = () => {
+    setSelectedSlot(null);
+  };
+
+  const handleRemoveStaff = (slotId: string, staffIndex: number, staffName: string) => {
+    // Show confirmation modal
+    setRemoveConfirm({ slotId, staffIndex, staffName });
+  };
+
+  const handleRemoveAll = () => {
+    if (!removeConfirm) return;
+    
+    // Remove from all slots
+    setTimeSlots(slots => 
+      slots.map(slot => ({
+        ...slot,
+        assignedStaff: slot.assignedStaff.filter(staff => staff.name !== removeConfirm.staffName),
+      }))
+    );
+    
+    setRemoveConfirm(null);
+  };
+
+  const handleRemoveOne = () => {
+    if (!removeConfirm) return;
+    
+    // Remove from just this slot
+    setTimeSlots(slots => 
+      slots.map(slot => {
+        if (slot.id === removeConfirm.slotId) {
+          const newStaff = [...slot.assignedStaff];
+          newStaff.splice(removeConfirm.staffIndex, 1);
+          return { ...slot, assignedStaff: newStaff };
+        }
+        return slot;
+      })
+    );
+    
+    setRemoveConfirm(null);
+  };
+
+  const handleAssignStaff = ({ employee, start, end, role }: { employee: UIEmployee; start: string; end: string; role?: string }) => {
+    const newStaffMember = {
+      name: employee.name,
+      role: role || 'Mixed', // Use provided role or default to Mixed
+      tone: scoreToTone(employee.score),
+    };
+
+    // Find all slots that fall within the start and end time range
+    const startIndex = TIME_OPTIONS.findIndex(time => time === start);
+    const endIndex = TIME_OPTIONS.findIndex(time => time === end);
+    
+    setTimeSlots(slots => 
+      slots.map(slot => {
+        const slotStartIndex = TIME_OPTIONS.findIndex(time => time === slot.startTime);
+        
+        // Assign to all slots that overlap with the time range
+        if (slotStartIndex >= startIndex && slotStartIndex < endIndex) {
+          return {
+            ...slot,
+            assignedStaff: [...slot.assignedStaff, newStaffMember],
+          };
+        }
+        return slot;
+      })
+    );
+    
+    // Clear selection after assigning staff
+    setSelectedSlot(null);
+  };
+
+  // Daily metrics based on current day data
+  const dailyMetrics: MetricCard[] = [
+    { kind: 'alert', title: 'Skill Mismatches', value: String(timeSlots.reduce((sum, slot) => sum + slot.mismatches, 0)) },
+    { kind: 'neutral', title: 'Primary Demand', value: 'Mixed' },
+    { kind: 'success', title: 'Expected Traffic', value: 'Medium' },
+    { kind: 'chart', title: 'Availability', value: 'High' },
+  ];
+
+  // Format current day date for navigation
+  const formatDayDate = (date: Date) => {
+    return date.toLocaleDateString(undefined, { 
+      weekday: 'long', 
+      month: 'long', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
+  };
+
   // Performance metrics for current week forecast
   const demandMetrics: MetricCard[] = [
     { kind: 'alert', title: 'Skill Mismatches', value: '12' },
@@ -85,126 +203,197 @@ export default function SchedulerScreenWeb() {
     { kind: 'chart', title: 'Average Availability', value: 'High' },
   ];
 
-
-
-
-
   return (
-    <View style={{ flex: 1, backgroundColor: colours.bg.subtle }}>
+    <View style={{ flex: 1, backgroundColor: colours.bg.muted }}>
       <Header />
+      <ScrollView style={styles.page}>
+        <View style={styles.pageContent}>
+          {/* Navigation bar with toggle and date controls */}
+          <View style={[styles.topBar, isCompact && styles.topBarCompact]}>
+            {isCompact ? (
+              <View style={styles.compactNavLayout}>
+                <View style={styles.compactDateNav}>
+                  <DateNavigator
+                    label={granularity === 'weekly' ? formatWeekRange(weekStart) : formatDayDate(anchorDate)}
+                    onPrev={() => setAnchorDate(d => granularity === 'weekly' ? addWeeks(d, -1) : addDays(d, -1))}
+                    onNext={() => setAnchorDate(d => granularity === 'weekly' ? addWeeks(d, 1) : addDays(d, 1))}
+                  />
+                </View>
+                <View style={styles.compactToggle}>
+                  <DateSwitch granularity={granularity} onGranularityChange={setGranularity} />
+                </View>
+              </View>
+            ) : (
+              <>
+                <View style={styles.leftSection}>
+                  <DateSwitch granularity={granularity} onGranularityChange={setGranularity} fluid />
+                </View>
+                <View style={styles.centerSection}>
+                  <DateNavigator
+                    label={granularity === 'weekly' ? formatWeekRange(weekStart) : formatDayDate(anchorDate)}
+                    onPrev={() => setAnchorDate(d => granularity === 'weekly' ? addWeeks(d, -1) : addDays(d, -1))}
+                    onNext={() => setAnchorDate(d => granularity === 'weekly' ? addWeeks(d, 1) : addDays(d, 1))}
+                  />
+                </View>
+                <View style={styles.rightSection} />
+              </>
+            )}
+          </View>
 
-      <ScrollView style={s.page} contentContainerStyle={s.pageContentWrapper}>
-        <View style={s.pageContent}>
-        {/* Navigation bar with toggle and date controls */}
-        <View style={[s.topBar, isCompact && s.topBarCompact]}>
-          {isCompact ? (
-            // Compact layout: stack vertically
-            <View style={s.compactNavLayout}>
-              <View style={s.compactDateNav}>
-                <DateNavigator
-                  label={formatWeekRange(weekStart)}
-                  onPrev={() => setAnchorDate(d => addWeeks(d, -1))}
-                  onNext={() => setAnchorDate(d => addWeeks(d, 1))}
-                />
-              </View>
-              <View style={s.compactToggle}>
-                <DateSwitch granularity="weekly" onGranularityChange={() => {}} />
-              </View>
-            </View>
-          ) : (
-            // Desktop layout: horizontal sections
+          {/* Main content area - conditional based on granularity */}
+          {granularity === 'weekly' ? (
             <>
-              <View style={s.leftSection}>
-                <DateSwitch granularity="weekly" onGranularityChange={() => {}} fluid />
-              </View>
-              <View style={s.centerSection}>
-                <DateNavigator
-                  label={formatWeekRange(weekStart)}
-                  onPrev={() => setAnchorDate(d => addWeeks(d, -1))}
-                  onNext={() => setAnchorDate(d => addWeeks(d, 1))}
+              {/* Weekly forecast display */}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Weekly Forecast</Text>
+                <WeekForecastGrid
+                  days={weekDays}
+                  onDayPress={(date) => {
+                    setAnchorDate(date);
+                    setGranularity('daily');
+                  }}
                 />
               </View>
-              <View style={s.rightSection} />
+
+              {/* Quick action button for automatic shift generation */}
+              <Pressable style={styles.autoShiftBtn} onPress={() => { /* modal placeholder */ }}>
+                <Text style={styles.autoShiftText}>+  Auto Shift</Text>
+              </Pressable>
+
+              {/* Current week analytics */}
+              <View style={styles.section}>
+                <MetricsRow title="Demand Forecast" cards={demandMetrics} />
+              </View>
+
+              {/* Historical performance data */}
+              <View style={styles.section}>
+                <MetricsRow title="Previous Week Overview" variant="previous-week" />
+              </View>
+
+              {/* Staff availability overview - only show in weekly view */}
+              <View style={styles.section}>
+                <Pressable
+                  style={styles.sectionHeaderRow}
+                  onPress={() => setIsStaffExpanded(!isStaffExpanded)}
+                >
+                  <Text style={styles.sectionTitle}>Available Staff</Text>
+                  <View style={styles.chevronBox}>
+                    <Text style={styles.chevron}>{isStaffExpanded ? '▲' : '▼'}</Text>
+                  </View>
+                </Pressable>
+                {isStaffExpanded && (
+                  <View style={styles.staffListContainer}>
+                    <AvailableStaffList staff={staff} />
+                  </View>
+                )}
+              </View>
+            </>
+          ) : (
+            <>
+              {/* Daily view metrics */}
+              <View style={styles.section}>
+                <MetricsRow title="Today's Forecast" cards={dailyMetrics} />
+              </View>
+
+              {/* Daily schedule view with split layout */}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Daily Schedule</Text>
+                <View style={[styles.splitContainer, isCompact && styles.splitContainerCompact]}>
+                  {/* Left side: Time slots */}
+                  <View style={[styles.timeSlotsColumn, isCompact && styles.timeSlotsColumnCompact, selectedSlot && styles.timeSlotsColumnWithOverlay]}>
+                    <View style={[styles.timeSlotListContainer, selectedSlot && styles.contentAboveOverlay]}>
+                      {/* Dark overlay when a time slot is selected - clickable to deselect */}
+                      {selectedSlot && (
+                        <Pressable
+                          style={styles.timeSlotsOverlay}
+                          onPress={handleCancelAssignment}
+                          accessible={false}
+                        />
+                      )}
+                      <ScrollView
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={styles.contentContainer}
+                        style={selectedSlot && styles.contentAboveOverlay}
+                      >
+                        {timeSlots.map(slot => (
+                          <TimeSlotWeb
+                            key={slot.id}
+                            slot={slot}
+                            onAddStaff={handleAddStaff}
+                            onRemoveStaff={handleRemoveStaff}
+                            isSelected={selectedSlot?.id === slot.id}
+                          />
+                        ))}
+                      </ScrollView>
+                    </View>
+                  </View>
+
+                  {/* Right side: Available staff sidebar with Auto Shift button - only on desktop */}
+                  {!isCompact && (
+                    <View style={[styles.staffColumn, isCompact && styles.staffColumnCompact]}>
+                      <View style={styles.stickyStaffContainer}>
+                        {/* Quick action button for automatic shift generation */}
+                        <Pressable style={styles.autoShiftBtnStaff} onPress={() => { /* modal placeholder */ }}>
+                          <Text style={styles.autoShiftText}>+  Auto Shift</Text>
+                        </Pressable>
+                        <AvailableStaffSidebar
+                          selectedSlot={selectedSlot}
+                          onAssign={handleAssignStaff}
+                          onCancel={handleCancelAssignment}
+                        />
+                      </View>
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              {/* Available Staff Modal - only on mobile/compact screens */}
+              {isCompact && selectedSlot && (
+                <AvailableEmployeesModal
+                  visible={true}
+                  onClose={handleCancelAssignment}
+                  slotStart={selectedSlot.startTime}
+                  slotEnd={selectedSlot.endTime}
+                  onAssign={handleAssignStaff}
+                />
+              )}
             </>
           )}
         </View>
-
-        {/* Main weekly forecast display */}
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>Weekly Forecast</Text>
-          <WeekForecastGrid days={weekDays} />
-        </View>
-
-        {/* Quick action button for automatic shift generation */}
-        <Pressable style={s.autoShiftBtn} onPress={() => { /* modal placeholder */ }}>
-          <Text style={s.autoShiftText}>+  Auto Shift</Text>
-        </Pressable>
-
-        {/* Analytics overview - full width layout for testing */}
-        {/* Current week analytics */}
-        <View style={s.section}>
-          <MetricsRow title="Demand Forecast" cards={demandMetrics} />
-        </View>
-
-        {/* Historical performance data */}
-        <View style={s.section}>
-          <MetricsRow title="Previous Week Overview" variant="previous-week" />
-        </View>
-
-        {/* Staff availability overview */}
-        <View style={s.section}>
-          <Pressable 
-            style={s.sectionHeaderRow} 
-            onPress={() => setIsStaffExpanded(!isStaffExpanded)}
-          >
-            <Text style={s.sectionTitle}>Available Staff</Text>
-            <View style={s.chevronBox}>
-              <Text style={s.chevron}>
-                {isStaffExpanded ? 'v' : '>'}
-              </Text>
-            </View>
-          </Pressable>
-          {isStaffExpanded && <AvailableStaffList staff={staff} />}
-        </View>
-        </View>
       </ScrollView>
+
+      {/* Remove Staff Confirmation Modal */}
+      <RemoveStaffConfirmModal
+        visible={!!removeConfirm}
+        staffName={removeConfirm?.staffName ?? ''}
+        onRemoveAll={handleRemoveAll}
+        onRemoveOne={handleRemoveOne}
+        onCancel={() => setRemoveConfirm(null)}
+      />
     </View>
   );
 }
 
-// Format date range for week navigation display
+// Helper for week range label
 function formatWeekRange(weekStart: Date) {
   const end = addDays(weekStart, 6);
-  const fmt = (d: Date) =>
-    d.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
-  return `${fmt(weekStart)} - ${fmt(end)}`;
+  return `${weekStart.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })} - ${end.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}`;
 }
 
-const s = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#E5E7EB' },
-  pageContentWrapper: { 
-    alignItems: 'center',
-    backgroundColor: '#E5E7EB',
-    paddingBottom: 0,
-    ...Platform.select({
-      web: {
-        minHeight: '100vh',
-      },
-    }),
-  } as any,
-  pageContent: { 
-    width: '100%',
+const styles = StyleSheet.create({
+  page: {
+    flex: 1,
+    backgroundColor: colours.bg.muted,
+  },
+  pageContent: {
     maxWidth: 1400,
-    paddingHorizontal: 16, 
-    paddingTop: 12, 
+    marginHorizontal: 'auto',
+    paddingHorizontal: 16,
+    paddingTop: 12,
     paddingBottom: 24,
     backgroundColor: colours.bg.subtle,
     borderRadius: Platform.OS === 'web' ? 0 : 16,
-    ...Platform.select({
-      web: {
-        minHeight: 'calc(100vh - 60px)',
-      },
-    }),
+    width: '100%',
   } as any,
   topBar: {
     flexDirection: 'row',
@@ -266,7 +455,12 @@ const s = StyleSheet.create({
     flex: 1,
     marginBottom: 0,
   },
-  sectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8, color: colours.text.primary },
+  sectionTitle: { 
+    fontSize: 16, 
+    fontWeight: '700', 
+    marginBottom: 8, 
+    color: colours.text.primary 
+  },
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -277,24 +471,31 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  chevronBox: { 
-    padding: 6, 
-    alignItems: 'center', 
+  chevronBox: {
+    padding: 4,
+    alignItems: 'center',
     justifyContent: 'center',
   },
   chevron: {
-    fontSize: 12,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    fontSize: 10,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: colours.border.default,
     textAlign: 'center',
-    lineHeight: 22,
-    color: colours.text.primary,
+    lineHeight: 18,
+    color: colours.text.secondary,
     backgroundColor: colours.bg.canvas,
   },
-  dropdownHint: { fontSize: 16, opacity: 0.7, color: colours.text.muted },
+  staffListContainer: {
+    marginTop: 16,
+  },
+  dropdownHint: { 
+    fontSize: 16, 
+    opacity: 0.7, 
+    color: colours.text.muted 
+  },
   autoShiftBtn: {
     alignSelf: 'center',
     backgroundColor: colours.brand.primary,
@@ -305,16 +506,100 @@ const s = StyleSheet.create({
     width: '70%',
     maxWidth: '50%',
     alignItems: 'center',
-    boxShadow: '0 2px 6px rgba(0,0,0,0.08)', // Enhanced drop shadow matching tile elevation
   } as any,
-  autoShiftText: { 
-    color: colours.bg.canvas, 
-    fontWeight: '600', 
+  autoShiftText: {
+    color: colours.bg.canvas,
+    fontWeight: '600',
     fontSize: 14,
   },
+  autoShiftBtnDaily: {
+    backgroundColor: colours.brand.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    marginTop: 8,
+    marginBottom: 16,
+    width: '80%',
+    maxWidth: '50%',
+    alignSelf: 'center',
+    alignItems: 'center',
+  } as any,
+  autoShiftBtnStaff: {
+    backgroundColor: colours.brand.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    marginBottom: 16,
+    width: '100%',
+    alignItems: 'center',
+  } as any,
+  dayViewContainer: {
+    backgroundColor: colours.bg.subtle,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 8,
+  },
+  splitContainer: {
+    flexDirection: 'row',
+    gap: 16,
+    marginTop: 8,
+    minHeight: 600,
+  },
+  splitContainerCompact: {
+    flexDirection: 'column',
+    minHeight: 'auto',
+  },
+  timeSlotsColumn: {
+    flex: 2,
+  },
+  timeSlotsColumnCompact: {
+    flex: 1,
+  },
+  staffColumn: {
+    flex: 1,
+    minWidth: 280,
+    maxWidth: 320,
+  },
+  staffColumnCompact: {
+    minWidth: 'auto',
+    maxWidth: '100%',
+    flex: 1,
+  },
+  stickyStaffContainer: {
+    position: 'sticky',
+    top: 12,
+  } as any,
+  timeSlotListContainer: {
+    flex: 1,
+    backgroundColor: colours.bg.muted,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    marginBottom: 16,
+    position: 'relative',
+  },
+  contentContainer: {
+    paddingBottom: 20,
+  },
+  timeSlotsColumnWithOverlay: {
+    position: 'relative',
+  } as any,
+  timeSlotsOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    borderRadius: 16,
+    zIndex: 100,
+  } as any,
+  contentAboveOverlay: {
+    position: 'relative',
+    zIndex: 20,
+  } as any,
 });
 
 if (Platform.OS !== 'web') {
   console.warn('SchedulerScreen.web.tsx loaded on non-web platform');
 }
-
