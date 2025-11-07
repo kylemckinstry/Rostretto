@@ -1,13 +1,13 @@
 // Responsive grid display of available staff with colour-coded status indicators
 import * as React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colours } from '../../theme/colours';
+import { colours, toneToColor, type Tone } from '../../theme/colours';
 
 // Staff member representation with visual status indication
 export type StaffBubble = {
   initials: string; // Two-character initials for compact display
   name: string; // Full staff member name
-  tone: 'good' | 'warn' | 'bad'; // Status indicator for border colour coding
+  tone: Tone | 'bad'; // Status indicator for border colour coding (bad maps to alert)
 };
 
 export default function AvailableStaffList({ staff }: { staff: StaffBubble[] }) {
@@ -15,20 +15,13 @@ export default function AvailableStaffList({ staff }: { staff: StaffBubble[] }) 
     <View style={s.grid}>
       {staff.map((s, i) => (
         // Individual staff bubble with status-based border colour
-        <View key={i} style={[stylesBubble.wrap, borderFor(s.tone)]}>
+        <View key={i} style={[stylesBubble.wrap, { borderColor: toneToColor(s.tone === 'bad' ? 'alert' : s.tone) }]}>
           <Text style={stylesBubble.initials}>{s.initials}</Text>
           <Text style={stylesBubble.name}>{s.name}</Text>
         </View>
       ))}
     </View>
   );
-}
-
-// Determine border colour based on staff member's current status
-function borderFor(t: StaffBubble['tone']) {
-  if (t === 'good') return { borderColor: colours.status.success }; // Green for available/performing well
-  if (t === 'warn') return { borderColor: colours.status.warning }; // Orange for caution/attention needed
-  return { borderColor: colours.status.danger }; // Red for unavailable/issues
 }
 
 // Main container styles for responsive staff grid layout

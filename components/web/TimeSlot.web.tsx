@@ -1,12 +1,12 @@
 // Web-specific time slot component with selection visual feedback
 import * as React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { colours } from '../../theme/colours';
+import { colours, toneToColor, type Tone } from '../../theme/colours';
 
 export type StaffAssignment = {
   name: string;
   role: string;
-  tone: 'good' | 'warn' | 'alert';
+  tone: Tone;
 };
 
 export type TimeSlotData = {
@@ -24,13 +24,6 @@ type Props = {
   onRemoveStaff?: (slotId: string, staffIndex: number, staffName: string) => void;
   isSelected?: boolean;
 };
-
-// Colour based on staff assignment tone
-function getColor(tone: 'good' | 'warn' | 'alert') {
-  if (tone === 'alert') return colours.status.danger;
-  if (tone === 'warn') return colours.status.warning;
-  return colours.status.success;
-}
 
 export default function TimeSlotWeb({ slot, onAddStaff, onRemoveStaff, isSelected = false }: Props) {
   const hasMismatches = slot.mismatches > 0;
@@ -57,7 +50,7 @@ export default function TimeSlotWeb({ slot, onAddStaff, onRemoveStaff, isSelecte
         {slot.assignedStaff.map((staff, index) => (
           <View
             key={`${slot.id}-${staff.name}-${index}`}
-            style={[s.staffRow, { borderColor: getColor(staff.tone) }]}
+            style={[s.staffRow, { borderColor: toneToColor(staff.tone) }]}
           >
             <Text style={s.staffName}>{staff.name}</Text>
             <Text style={s.staffRole}>{staff.role}</Text>

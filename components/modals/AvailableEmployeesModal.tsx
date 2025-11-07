@@ -11,11 +11,12 @@ import {
   UIManager,
 } from 'react-native';
 import { useEmployeesUI, type UIEmployee } from '../../viewmodels/employees';
-import { colours } from '../../theme';
+import { colours, toneToColor } from '../../theme';
 import { TIME_OPTIONS } from '../../utils/timeGeneration';
 import { ROLE_OPTIONS } from '../../constants/staffAssignment';
 import { TimePickerRow } from '../shared/TimePickerRow';
 import { RolePickerRow } from '../shared/RolePickerRow';
+import { scoreToTone } from '../../helpers/timeUtils';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -78,8 +79,8 @@ export default function AvailableEmployeesModal({
           renderItem={({ item }) => {
             const name = item.name;
             const score = Math.round(item.score ?? 0); // UIEmployee already 0..100
-            const tone = score >= 80 ? 'good' : score >= 56 ? 'warn' : 'alert';
-            const border = tone === 'good' ? '#5CB85C' : tone === 'warn' ? '#F5A623' : '#E57373';
+            const tone = scoreToTone(score);
+            const border = toneToColor(tone);
             const times = byIdTimes[item.id] ?? { start: slotStart, end: slotEnd, role: 'Mixed' };
             const isOpen = expandedId === item.id;
 

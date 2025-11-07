@@ -1,12 +1,13 @@
 import * as React from 'react';
 import { View, Text, StyleSheet, Pressable, FlatList, Platform } from 'react-native';
 import { useEmployeesUI, type UIEmployee } from '../../viewmodels/employees';
-import { colours } from '../../theme/colours';
+import { colours, toneToColor } from '../../theme/colours';
 import { TimeSlotData } from '../roster/TimeSlot';
 import { TIME_OPTIONS } from '../../utils/timeGeneration';
 import { ROLE_OPTIONS } from '../../constants/staffAssignment';
 import { TimePickerRow } from '../shared/TimePickerRow';
 import { RolePickerRow } from '../shared/RolePickerRow';
+import { scoreToTone } from '../../helpers/timeUtils';
 
 type Props = {
   selectedSlot: TimeSlotData | null;
@@ -77,8 +78,8 @@ type Props = {
         renderItem={({ item }) => {
           const name = item.name;
           const score = Math.round(item.score ?? 0);
-          const tone = score >= 80 ? 'good' : score >= 56 ? 'warn' : 'alert';
-          const border = tone === 'good' ? '#5CB85C' : tone === 'warn' ? '#F5A623' : '#E57373';
+          const tone = scoreToTone(score);
+          const border = toneToColor(tone);
           const times = byIdTimes[item.id] ?? { 
             start: selectedSlot?.startTime || '6:00 am', 
             end: selectedSlot?.endTime || '6:30 am',

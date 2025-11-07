@@ -4,7 +4,9 @@ import { useNavigation } from '@react-navigation/native';
 import Header from '../components/Header';
 import { colours } from '../theme/colours';
 import { useEmployeesUI } from '../viewmodels/employees';
-import MetricsRow, { MetricCard } from '../components/web/MetricsRow';
+import Radar from '../components/employees/Radar';
+import MetricsRow from '../components/web/MetricsRow';
+import { type MetricCard } from '../data/mock/metrics';
 import SearchIcon from '../assets/search.svg';
 
 // Types

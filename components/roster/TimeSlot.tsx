@@ -1,12 +1,12 @@
 // components/TimeSlot.tsx
 import * as React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { colours } from '../../theme/colours';
+import { colours, toneToColor, type Tone } from '../../theme/colours';
 
 export type StaffAssignment = {
   name: string;
   role: string;
-  tone: 'good' | 'warn' | 'alert';
+  tone: Tone;
 };
 
 export type TimeSlotData = {
@@ -27,13 +27,6 @@ type Props = {
   // Optional: remove a staff member from this slot
   onRemoveStaff?: (slotId: string, staffIndex: number, staffName: string) => void;
 };
-
-// Border colour based on tone
-function getColor(tone: 'good' | 'warn' | 'alert') {
-  if (tone === 'alert') return colours.status.danger;
-  if (tone === 'warn') return colours.status.warning;
-  return colours.status.success;
-}
 
 export default function TimeSlot({ slot, onAddStaff, onRemoveStaff }: Props) {
   const hasMismatches = slot.mismatches > 0;
@@ -60,7 +53,7 @@ export default function TimeSlot({ slot, onAddStaff, onRemoveStaff }: Props) {
         {slot.assignedStaff.map((staff, index) => (
           <View
             key={`${slot.id}-${staff.name}-${index}`}
-            style={[s.staffRow, { borderColor: getColor(staff.tone) }]}
+            style={[s.staffRow, { borderColor: toneToColor(staff.tone) }]}
           >
             <Text style={s.staffName}>{staff.name}</Text>
             <Text style={s.staffRole}>{staff.role}</Text>

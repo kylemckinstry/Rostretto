@@ -2,6 +2,7 @@
 import * as React from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { colours } from '../../theme/colours';
+import { MOCK_DEMAND_FORECAST_METRICS, MOCK_PREVIOUS_WEEK_METRICS, type MetricCard } from '../../data/mock/metrics';
 
 // SVG icon components for metric visualisation
 import CoffeeIcon from '../../assets/coffee.svg';
@@ -33,13 +34,6 @@ const ExclamationIcon = ({ width = 18, height = 18, color = colours.status.dange
     </Text>
   </View>
 );
-
-export type MetricCard = {
-  kind: 'alert' | 'success' | 'neutral' | 'chart';
-  title: string;
-  value: string;
-  sub?: string;
-};
 
 type MetricsRowProps = {
   title: string;
@@ -86,22 +80,10 @@ export default function MetricsRow({ title, cards, variant = 'demand-forecast' }
 // Generate metric cards based on variant
 function generateCardsForVariant(variant: 'demand-forecast' | 'previous-week'): MetricCard[] {
   if (variant === 'previous-week') {
-    // Previous week overview metrics
-    return [
-      { kind: 'alert', title: 'Skill Mismatches', value: '7' },
-      { kind: 'neutral', title: 'Highest Demand', value: 'Coffee' },
-      { kind: 'alert', title: 'Understaffed Shifts', value: '5' },
-      { kind: 'neutral', title: 'Overstaffed Shifts', value: '4' },
-    ];
+    return MOCK_PREVIOUS_WEEK_METRICS;
   }
   
-  // Default: demand forecast metrics
-  return [
-    { kind: 'alert', title: 'Skill Mismatches', value: '12' },
-    { kind: 'neutral', title: 'Highest Average Demand', value: 'Coffee' },
-    { kind: 'success', title: 'Expected Average Traffic', value: 'Low' },
-    { kind: 'chart', title: 'Average Availability', value: 'High' },
-  ];
+  return MOCK_DEMAND_FORECAST_METRICS;
 }
 
 function iconComponentFor(k: MetricCard['kind']) {

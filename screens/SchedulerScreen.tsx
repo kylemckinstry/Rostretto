@@ -24,6 +24,7 @@ import { TimeSlotData, StaffAssignment } from '../components/roster/TimeSlot';
 import { colours } from '../theme/colours';
 import { toMinutes, scoreToTone, roleToDisplayName } from '../helpers/timeUtils';
 import { generateTimeSlots } from '../helpers/schedulerIO';
+import { generateMockWeekIndicators, DEFAULT_DAY_INDICATORS } from '../data/mock/weekIndicators';
 
 const PADDED_WRAPPER = { paddingHorizontal: 16 };
 const HEADER_GROUP = { backgroundColor: colours.brand.accent, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 10, marginTop: 16, marginBottom: 4 };
@@ -112,22 +113,14 @@ export default function SchedulerScreen() {
   // Mock week data for demo
   const start = startOfWeek(anchorDate);
   const mkKey = (d: Date) => d.toISOString().slice(0, 10);
-  const weekIndicators: Record<string, DayIndicators> = {
-    [mkKey(addDays(start, 0))]: { mismatches: 3, demand: 'Coffee', traffic: 'medium' },
-    [mkKey(addDays(start, 1))]: { mismatches: 0, demand: 'Mixed', traffic: 'low' },
-    [mkKey(addDays(start, 2))]: { mismatches: 1, demand: 'Sandwich', traffic: 'medium' },
-    [mkKey(addDays(start, 3))]: { mismatches: 2, demand: 'Coffee', traffic: 'high' },
-    [mkKey(addDays(start, 4))]: { mismatches: 0, demand: 'Mixed', traffic: 'medium' },
-    [mkKey(addDays(start, 5))]: { mismatches: 1, demand: 'Coffee', traffic: 'high' },
-    [mkKey(addDays(start, 6))]: { mismatches: 0, demand: 'Mixed', traffic: 'low' },
-  };
+  const weekIndicators = generateMockWeekIndicators(start);
 
   const openDay = (d: Date) => { setSelectedDate(d); setMode('day'); setAnchorDate(d); };
   const today = new Date();
   const todayInThisWeek = addDays(start, [0,1,2,3,4,5,6].find(i => isSameDay(addDays(start, i), today)) ?? 0);
   const focusedDate = mode === 'day' ? (selectedDate ?? today) : ((selectedDate && isSameDay(selectedDate, today)) ? selectedDate : todayInThisWeek);
   const focusedKey = mkKey(focusedDate);
-  const focusedIndicators: DayIndicators = weekIndicators[focusedKey] ?? { mismatches: 0, demand: 'Mixed', traffic: 'medium' };
+  const focusedIndicators: DayIndicators = weekIndicators[focusedKey] ?? DEFAULT_DAY_INDICATORS;
   const granularity: 'weekly' | 'daily' = mode === 'week' ? 'weekly' : 'daily';
 
   const onGranularityChange = (g: 'weekly' | 'daily') => { if (g === 'daily') { const d = today; setSelectedDate(d); setAnchorDate(d); setMode('day'); } else { setMode('week'); } };

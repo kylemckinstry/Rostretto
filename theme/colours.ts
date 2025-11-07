@@ -30,3 +30,18 @@ export const colours = {
   },
 } as const;
 export type Colors = typeof colours;
+
+// Tone type used across the app for status indicators
+export type Tone = 'good' | 'warn' | 'alert';
+
+// Maps tone to corresponding status color from theme
+export function toneToColor(tone: Tone): string {
+  switch (tone) {
+    case 'good':
+      return colours.status.success;
+    case 'warn':
+      return colours.status.warning;
+    case 'alert':
+      return colours.status.danger;
+  }
+}

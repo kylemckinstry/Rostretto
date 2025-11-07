@@ -7,11 +7,13 @@ import { DayIndicators } from '../state/types';
 import { TimeSlotData } from '../components/web/TimeSlot.web';
 import { scoreToTone } from '../helpers/timeUtils';
 import { generateTimeSlots, generateTimeOptions } from '../helpers/schedulerIO';
+import { generateMockWeekIndicators, DEFAULT_DAY_INDICATORS } from '../data/mock/weekIndicators';
+import { MOCK_DEMAND_FORECAST_METRICS, MOCK_PREVIOUS_WEEK_METRICS, type MetricCard } from '../data/mock/metrics';
 
 // Web-optimised components with responsive breakpoints
 import WeekForecastGrid, { WeekForecastDay } from '../components/web/WeekForecastGrid';
 import AvailableStaffList, { StaffBubble } from '../components/web/AvailableStaffList';
-import MetricsRow, { MetricCard } from '../components/web/MetricsRow';
+import MetricsRow from '../components/web/MetricsRow';
 import AvailableStaffSidebar from '../components/web/AvailableStaffSidebar';
 import AvailableEmployeesModal from '../components/modals/AvailableEmployeesModal';
 import RemoveStaffConfirmModal from '../components/modals/RemoveStaffConfirmModal';
@@ -49,21 +51,13 @@ export default function SchedulerScreenWeb() {
   // Sample weekly data for the forecast
   const weekStart = startOfWeek(anchorDate);
   const mkKey = (d: Date) => d.toISOString().slice(0, 10);
-  const weekIndicators: Record<string, DayIndicators> = {
-    [mkKey(addDays(weekStart, 0))]: { mismatches: 3, demand: 'Coffee', traffic: 'medium' },
-    [mkKey(addDays(weekStart, 1))]: { mismatches: 0, demand: 'Mixed', traffic: 'low' },
-    [mkKey(addDays(weekStart, 2))]: { mismatches: 1, demand: 'Sandwich', traffic: 'medium' },
-    [mkKey(addDays(weekStart, 3))]: { mismatches: 2, demand: 'Coffee', traffic: 'high' },
-    [mkKey(addDays(weekStart, 4))]: { mismatches: 0, demand: 'Mixed', traffic: 'medium' },
-    [mkKey(addDays(weekStart, 5))]: { mismatches: 1, demand: 'Coffee', traffic: 'high' },
-    [mkKey(addDays(weekStart, 6))]: { mismatches: 0, demand: 'Mixed', traffic: 'low' },
-  };
+  const weekIndicators = generateMockWeekIndicators(weekStart);
 
   // Transform week data for forecast grid component
   const weekDays: WeekForecastDay[] = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(weekStart, i);
     const key = mkKey(d);
-    const indicators = weekIndicators[key] || { mismatches: 0, demand: 'Mixed', traffic: 'medium' };
+    const indicators = weekIndicators[key] || DEFAULT_DAY_INDICATORS;
     
     // Map internal status types to display strings
     const trafficMapping = { low: 'Low', medium: 'Medium', high: 'High' } as const;
@@ -196,12 +190,7 @@ export default function SchedulerScreenWeb() {
   };
 
   // Performance metrics for current week forecast
-  const demandMetrics: MetricCard[] = [
-    { kind: 'alert', title: 'Skill Mismatches', value: '12' },
-    { kind: 'neutral', title: 'Highest Average Demand', value: 'Coffee' },
-    { kind: 'success', title: 'Expected Average Traffic', value: 'Low' },
-    { kind: 'chart', title: 'Average Availability', value: 'High' },
-  ];
+  const demandMetrics: MetricCard[] = MOCK_DEMAND_FORECAST_METRICS;
 
   return (
     <View style={{ flex: 1, backgroundColor: colours.bg.muted }}>
