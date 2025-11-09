@@ -8,6 +8,7 @@ import Radar from '../components/employees/Radar';
 import MetricsRow from '../components/web/MetricsRow';
 import { type MetricCard } from '../data/mock/metrics';
 import SearchIcon from '../assets/search.svg';
+import NotificationIcon from '../assets/notification.svg';
 import { scoreToTone } from '../helpers/timeUtils';
 
 // Types
@@ -181,6 +182,7 @@ function StaffCapabilityCard({ employee, style }: { employee: Employee; style?: 
 // Main Component
 export default function CapabilitiesScreenWeb() {
   const { width } = useWindowDimensions();
+  const navigation = useNavigation();
   const employees = useEmployeesUI();
   
   // Note: Any future CollapsibleSection components should default to expanded (true) on web
@@ -251,9 +253,18 @@ export default function CapabilitiesScreenWeb() {
       <ScrollView style={styles.page} contentContainerStyle={styles.pageContentWrapper}>
         <View style={styles.pageContent}>
           
-          <Text style={[styles.pageTitle, (isStacked || isTwoByTwo) && styles.pageTitleCompact]}>
-            Team Capability Overview
-          </Text>
+          <View style={styles.titleRow}>
+            <Text style={[styles.pageTitle, (isStacked || isTwoByTwo) && styles.pageTitleCompact]}>
+              Team Capability Overview
+            </Text>
+            <Pressable 
+              onPress={() => navigation.navigate('Feedback' as never)}
+              style={styles.notificationButton}
+              accessibilityLabel="View feedback requests"
+            >
+              <NotificationIcon width={20} height={20} color={colours.brand.primary} />
+            </Pressable>
+          </View>
 
           <View style={styles.section}>
             <MetricsRow title="Team Skill Snapshot" cards={snapshotMetrics} />
@@ -361,12 +372,30 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700' as any,
     color: colours.brand.primary,
-    marginBottom: 24,
+    marginBottom: 0,
     textAlign: 'center' as any,
   },
   pageTitleCompact: {
     fontSize: 20,
-    marginBottom: 20,
+    marginBottom: 0,
+  },
+  titleRow: {
+    flexDirection: 'row' as any,
+    alignItems: 'center' as any,
+    justifyContent: 'center' as any,
+    marginBottom: 24,
+    position: 'relative' as any,
+    minHeight: 36,
+  },
+  notificationButton: {
+    position: 'absolute' as any,
+    right: 0,
+    padding: 8,
+    ...Platform.select({
+      web: {
+        cursor: 'pointer',
+      },
+    }),
   },
   section: {
     backgroundColor: colours.brand.accent,

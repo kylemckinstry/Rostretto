@@ -31,6 +31,7 @@ export function buildWeekIndicators(
     mismatches: number;
     trafficFromShifts?: 'low' | 'medium' | 'high';
     demand?: 'Coffee' | 'Sandwich' | 'Mixed';
+    countedShifts?: Set<string>;
   }>();
 
   const up = (obj: Record<string, number>, k: string, v: number) => (obj[k] = (obj[k] ?? 0) + v);
@@ -64,6 +65,9 @@ export function buildWeekIndicators(
   }
 
   // Calculate mismatches based on employee fitness for the day's demand
+  // Track which shifts have at least one mismatch (count unique slots, not individual employees)
+  const shiftsWithMismatches = new Set<number>();
+  
   for (const a of assignments) {
     const sh = shifts.find(x => x.shiftId === a.shiftId);
     if (!sh) continue;
@@ -77,10 +81,29 @@ export function buildWeekIndicators(
       const fitness = calculateFitness(employee, agg.demand);
       const tone = scoreToTone(fitness);
       
-      // Count as mismatch if employee has poor fit (red/alert tone)
+      // Mark this shift as having a mismatch if employee has poor fit (red/alert tone)
       if (tone === 'alert') {
-        agg.mismatches += 1;
+        shiftsWithMismatches.add(a.shiftId);
       }
+    }
+  }
+
+  // Count unique shifts with mismatches per day
+  for (const a of assignments) {
+    const sh = shifts.find(x => x.shiftId === a.shiftId);
+    if (!sh || !shiftsWithMismatches.has(a.shiftId)) continue;
+    const key = localKey(sh.date);
+    const agg = byDay.get(key);
+    if (!agg) continue;
+    
+    // Only count each shift once per day
+    const shiftKey = `${key}-${a.shiftId}`;
+    if (!agg.countedShifts) {
+      agg.countedShifts = new Set();
+    }
+    if (!agg.countedShifts.has(shiftKey)) {
+      agg.countedShifts.add(shiftKey);
+      agg.mismatches += 1;
     }
   }
 

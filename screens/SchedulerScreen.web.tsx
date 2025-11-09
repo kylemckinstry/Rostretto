@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { View, Text, StyleSheet, Pressable, Platform, ScrollView, useWindowDimensions } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { addDays, addWeeks, startOfWeek } from '../utils/date';
 import Header from '../components/Header'; // Automatically resolves to web-specific header component
 import { colours } from '../theme/colours';
@@ -25,6 +26,9 @@ import TimeSlotWeb from '../components/web/TimeSlot.web';
 import type { UIEmployee } from '../viewmodels/employees';
 import { useEmployeesUI } from '../viewmodels/employees';
 
+// Icons
+import NotificationIcon from '../assets/notification.svg';
+
 import { subscribeWeekAssignments } from '../data/assignments.repo';
 
 import type { AssignmentDTO } from '../api/client';
@@ -45,6 +49,7 @@ const USE_API =
   (typeof window !== 'undefined' && (window as any).__USE_API__ === true);
 
 export default function SchedulerScreenWeb() {
+  const navigation = useNavigation();
   const [anchorDate, setAnchorDate] = React.useState(new Date());
   const [isStaffExpanded, setIsStaffExpanded] = React.useState(false);
   const [granularity, setGranularity] = React.useState<'weekly' | 'daily'>('daily');
@@ -387,19 +392,28 @@ export default function SchedulerScreenWeb() {
       // Day view: fill slots for the current anchorDate
       const dayKey = mkKey(anchorDate);
       
-      // Weekly tiles: compute real indicators
-      const indicatorsByDate = buildWeekIndicators(bundle.shifts, bundle.assignments, bundle.employees);
+      // Calculate mismatches locally, but use backend's demand and traffic (preserve original shift data)
+      const localIndicators = buildWeekIndicators(bundle.shifts, bundle.assignments, bundle.employees);
+      
+      // Create a map of backend indicators by date for easy lookup
+      const backendIndicatorsByDate = new Map(
+        bundle.indicators.days.map(day => [day.date, day])
+      );
+      
+      const demandMapping = { Coffee: 'Coffee', Sandwiches: 'Sandwich', Sandwich: 'Sandwich', Mixed: 'Mixed' } as const;
+      const trafficMapping = { low: 'Low', medium: 'Medium', high: 'High' } as const;
+      
       const weekDaysLiveNext = Array.from({ length: 7 }, (_, i) => {
         const d = addDays(weekStart, i);
         const key = mkKey(d);
-        const ind = indicatorsByDate[key];
-        const demandMapping = { Coffee: 'Coffee', Sandwiches: 'Sandwich', Sandwich: 'Sandwich', Mixed: 'Mixed' } as const;
-        const trafficMapping = { low: 'Low', medium: 'Medium', high: 'High' } as const;
+        const localInd = localIndicators[key];
+        const backendInd = backendIndicatorsByDate.get(key);
+        
         return {
           date: d,
-          mismatches: ind?.mismatches ?? 0,
-          demand: (demandMapping[ind?.demand as keyof typeof demandMapping] || 'Mixed') as 'Coffee' | 'Sandwich' | 'Mixed',
-          traffic: trafficMapping[ind?.traffic ?? 'medium'] as 'Low' | 'Medium' | 'High',
+          mismatches: localInd?.mismatches ?? 0, // Local calculation
+          demand: (demandMapping[backendInd?.demand as keyof typeof demandMapping] || 'Mixed') as 'Coffee' | 'Sandwich' | 'Mixed', // Backend demand
+          traffic: trafficMapping[backendInd?.traffic ?? 'medium'] as 'Low' | 'Medium' | 'High', // Backend traffic
         };
       });
       
@@ -468,19 +482,28 @@ export default function SchedulerScreenWeb() {
       // Fetch updated bundle to get the new assignments
       const bundle = await fetchWeekBundle(weekId);
 
-      // Weekly tiles: compute real indicators
-      const indicatorsByDate = buildWeekIndicators(bundle.shifts, bundle.assignments, bundle.employees);
+      // Calculate mismatches locally, but use backend's demand and traffic (preserve original shift data)
+      const localIndicators = buildWeekIndicators(bundle.shifts, bundle.assignments, bundle.employees);
+      
+      // Create a map of backend indicators by date for easy lookup
+      const backendIndicatorsByDate = new Map(
+        bundle.indicators.days.map(day => [day.date, day])
+      );
+      
+      const demandMapping = { Coffee: 'Coffee', Sandwiches: 'Sandwich', Sandwich: 'Sandwich', Mixed: 'Mixed' } as const;
+      const trafficMapping = { low: 'Low', medium: 'Medium', high: 'High' } as const;
+      
       const weekDaysLiveNext = Array.from({ length: 7 }, (_, i) => {
         const d = addDays(weekStart, i);
         const key = mkKey(d);
-        const ind = indicatorsByDate[key];
-        const trafficMapping = { low: 'Low', medium: 'Medium', high: 'High' } as const;
-        const demandMapping = { Coffee: 'Coffee', Sandwich: 'Sandwich', Mixed: 'Mixed' } as const;
+        const localInd = localIndicators[key];
+        const backendInd = backendIndicatorsByDate.get(key);
+        
         return {
           date: d,
-          mismatches: ind?.mismatches ?? 0,
-          demand: demandMapping[ind?.demand ?? 'Mixed'],
-          traffic: trafficMapping[ind?.traffic ?? 'medium'],
+          mismatches: localInd?.mismatches ?? 0, // Local calculation
+          demand: (demandMapping[backendInd?.demand as keyof typeof demandMapping] || 'Mixed') as 'Coffee' | 'Sandwich' | 'Mixed', // Backend demand
+          traffic: trafficMapping[backendInd?.traffic ?? 'medium'] as 'Low' | 'Medium' | 'High', // Backend traffic
         };
       });
       
@@ -567,20 +590,28 @@ export default function SchedulerScreenWeb() {
 
   // Helper to recalculate indicators after assignment changes
   const recalculateIndicators = (bundle: WeekBundle) => {
-    const indicatorsByDate = buildWeekIndicators(bundle.shifts, bundle.assignments, bundle.employees);
-    const trafficMapping = { low: 'Low', medium: 'Medium', high: 'High' } as const;
+    // Calculate mismatches locally, but use backend's demand and traffic (preserve original shift data)
+    const localIndicators = buildWeekIndicators(bundle.shifts, bundle.assignments, bundle.employees);
+    
+    // Create a map of backend indicators by date for easy lookup
+    const backendIndicatorsByDate = new Map(
+      bundle.indicators.days.map(day => [day.date, day])
+    );
+    
     const demandMapping = { Coffee: 'Coffee', Sandwiches: 'Sandwich', Sandwich: 'Sandwich', Mixed: 'Mixed' } as const;
+    const trafficMapping = { low: 'Low', medium: 'Medium', high: 'High' } as const;
     
     const updatedTiles = Array.from({ length: 7 }, (_, i) => {
       const d = addDays(weekStart, i);
       const key = mkKey(d);
-      const ind = indicatorsByDate[key];
+      const localInd = localIndicators[key];
+      const backendInd = backendIndicatorsByDate.get(key);
       
       return {
         date: d,
-        mismatches: ind?.mismatches ?? 0,
-        demand: (demandMapping[ind?.demand as keyof typeof demandMapping] || 'Mixed') as 'Coffee' | 'Sandwich' | 'Mixed',
-        traffic: (trafficMapping[ind?.traffic ?? 'medium']) as 'Low' | 'Medium' | 'High',
+        mismatches: localInd?.mismatches ?? 0, // Local calculation
+        demand: (demandMapping[backendInd?.demand as keyof typeof demandMapping] || 'Mixed') as 'Coffee' | 'Sandwich' | 'Mixed', // Backend demand
+        traffic: trafficMapping[backendInd?.traffic ?? 'medium'] as 'Low' | 'Medium' | 'High', // Backend traffic
       };
     });
     setWeekDaysLive(updatedTiles);
@@ -1066,7 +1097,16 @@ export default function SchedulerScreenWeb() {
                     onNext={() => setAnchorDate(d => granularity === 'weekly' ? addWeeks(d, 1) : addDays(d, 1))}
                   />
                 </View>
-                <View style={styles.rightSection} />
+                <View style={styles.rightSection}>
+                  <Pressable 
+                    style={styles.notificationButton}
+                    onPress={() => navigation.navigate('Feedback' as never)}
+                    accessibilityLabel="View pending feedback"
+                    accessibilityRole="button"
+                  >
+                    <NotificationIcon width={20} height={20} color={colours.brand.primary} />
+                  </Pressable>
+                </View>
               </>
             )}
           </View>
@@ -1262,7 +1302,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   leftSection: {
-    zIndex: 1,
+    zIndex: 5,
   },
   centerSection: {
     position: 'absolute',
@@ -1270,9 +1310,27 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 10,
+    pointerEvents: 'box-none',
   },
   rightSection: {
     flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    zIndex: 5,
+  },
+  notificationButton: {
+    padding: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notificationButtonCompact: {
+    padding: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 36,
   },
   section: {
     backgroundColor: colours.brand.accent,

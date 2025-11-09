@@ -19,6 +19,8 @@ export default function Header() {
     if (routeName === 'Roster' || routeName === 'Fairness') return routeName;
     // Nested Team navigator routes
     if (routeName === 'CapabilitiesMain' || routeName === 'Employee') return 'Team';
+    // Feedback is a standalone page, no active tab
+    if (routeName === 'Feedback') return null;
     return routeName;
   };
   
@@ -38,17 +40,17 @@ export default function Header() {
     // If tab already active, ignore
     if (key === activeRoute) return;
     
-    // For Team tab, use reset to ensure we go to CapabilitiesMain
+    // Navigate to root tabs first, then to specific tab
     if (key === 'Team') {
-      (nav as any).navigate('Team', { screen: 'CapabilitiesMain' });
+      (nav as any).navigate('Root', { screen: 'Team', params: { screen: 'CapabilitiesMain' } });
     } else {
-      nav.navigate(key as never);
+      (nav as any).navigate('Root', { screen: key });
     }
   };
 
   const handleLogoPress = () => {
-    // Navigate to Roster with day view
-    nav.navigate('Roster' as never);
+    // Navigate to Roster tab in Root
+    (nav as any).navigate('Root', { screen: 'Roster' });
   };
 
   return (

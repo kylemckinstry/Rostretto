@@ -10,6 +10,7 @@ import SchedulerScreen from '../screens/SchedulerScreen';
 import CapabilitiesNavigator from './CapabilitiesNavigator';
 import FairnessScreen from '../screens/FairnessScreen';
 import EmployeeScreen from '../screens/EmployeeScreen';
+import FeedbackScreen from '../screens/FeedbackScreen';
 import { colours } from '../theme/colours';
 
 // SVG icons for tab navigation
@@ -91,6 +92,7 @@ export default function RootNavigator() {
           }}
         />
         <Stack.Screen name="Employee" component={EmployeeScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Feedback" component={FeedbackScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
