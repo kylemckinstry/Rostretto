@@ -2,15 +2,16 @@ import * as React from 'react';
 import { View, Text, StyleSheet, Platform, ScrollView, useWindowDimensions, TextInput, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Header from '../components/Header';
-import { colours } from '../theme/colours';
+import { colours, toneToColor } from '../theme/colours';
 import { useEmployeesUI } from '../viewmodels/employees';
 import Radar from '../components/employees/Radar';
 import MetricsRow from '../components/web/MetricsRow';
 import { type MetricCard } from '../data/mock/metrics';
 import SearchIcon from '../assets/search.svg';
+import { scoreToTone } from '../helpers/timeUtils';
 
 // Types
-export type Role = 'Coffee' | 'Sandwich' | 'Cashier' | 'Closer';
+export type Role = 'Coffee' | 'Sandwich' | 'Customer Service' | 'Speed';
 
 export type Employee = {
   id: string;
@@ -21,13 +22,13 @@ export type Employee = {
   fairnessColor?: 'green' | 'yellow' | 'red';
 };
 
-const KNOWN_SKILLS: Array<Role | string> = ['Coffee', 'Sandwich', 'Cashier', 'Closer'];
+const KNOWN_SKILLS: Array<Role | string> = ['Coffee', 'Sandwich', 'Customer Service', 'Speed'];
 
 const SKILL_COLOURS: Record<string, string> = {
   Coffee: colours.brand.primary,
   Sandwich: colours.status.success,
-  Cashier: colours.status.warning,
-  Closer: colours.text.primary,
+  'Customer Service': colours.status.warning,
+  Speed: colours.text.primary,
 };
 
 // Helper functions
@@ -40,14 +41,25 @@ const initials = (name: string) =>
     .join('');
 
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
+// Values are already in 0-100 range from backend, just clamp them
 const normalizePercent = (n?: number) => (typeof n === 'number' ? clamp01(n / 100) : 0);
 
 function scorePillColors(v?: number) {
   if (typeof v !== 'number') {
     return { bg: colours.bg.subtle, border: colours.border.default, text: colours.text.primary };
   }
-  if (v >= 80) return { bg: colours.brand.accent, border: colours.border.default, text: colours.brand.primary };
-  if (v >= 60) return { bg: colours.status.warningBg, border: colours.status.warningBorder, text: colours.status.warningText };
+  
+  // Use centralized scoreToTone function for consistency
+  const tone = scoreToTone(v);
+  const borderColor = toneToColor(tone);
+  
+  if (tone === 'good') {
+    return { bg: colours.brand.accent, border: borderColor, text: colours.brand.primary };
+  }
+  if (tone === 'warn') {
+    return { bg: colours.status.warningBg, border: colours.status.warningBorder, text: colours.status.warningText };
+  }
+  // alert
   return { bg: colours.status.dangerBg, border: colours.status.dangerBorder, text: colours.status.dangerText };
 }
 
@@ -124,7 +136,10 @@ function StaffCapabilityCard({ employee, style }: { employee: Employee; style?: 
       <View style={styles.skillsSection}>
         {topSkills.map(([skill, value]) => {
           const pct = normalizePercent(value);
-          const color = SKILL_COLOURS[skill] || colours.status.success;
+          const rawValue = value ?? 0;
+          // Use centralized scoreToTone function for consistency
+          const tone = scoreToTone(rawValue);
+          const color = toneToColor(tone);
           return (
             <View key={skill} style={styles.skillItem}>
               <Text style={styles.skillName}>{skill}</Text>

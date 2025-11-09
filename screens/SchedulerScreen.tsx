@@ -186,7 +186,7 @@ export default function SchedulerScreen() {
       <AvailableEmployeesModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
-        slotStart={activeSlot?.startTime ?? '6:00 am'}
+        slotStart={activeSlot?.startTime ?? '7:00 am'}
         slotEnd={activeSlot?.endTime ?? '4:00 pm'}
         onAssign={handleAssign}
       />

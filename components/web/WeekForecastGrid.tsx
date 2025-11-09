@@ -11,7 +11,7 @@ import MixedIcon from '../../assets/mixed.svg';
 export type WeekForecastDay = {
   date: Date;
   mismatches: number;
-  demand: 'Coffee' | 'Sandwiches' | 'Mixed';
+  demand: 'Coffee' | 'Sandwich' | 'Mixed';
   traffic: 'Low' | 'Medium' | 'High';
 };
 
@@ -69,7 +69,7 @@ export default function WeekForecastGrid({ days, onDayPress }: WeekForecastGridP
   // Icons corresponding to demand types
   const demandIcons: Record<WeekForecastDay['demand'], React.FC<any>> = {
     Coffee: CoffeeIcon,
-    Sandwiches: SandwichIcon,
+    Sandwich: SandwichIcon,
     Mixed: MixedIcon,
   };
 
@@ -78,6 +78,9 @@ export default function WeekForecastGrid({ days, onDayPress }: WeekForecastGridP
     const DemandIcon = demandIcons[day.demand];
     const mismatchColor = getMismatchColor(day.mismatches);
     const trafficIconColor = trafficColor(day.traffic);
+    
+    // Check if this is loading state
+    const isLoading = day.mismatches === -1;
 
     const cardContent = (
       <>
@@ -90,32 +93,59 @@ export default function WeekForecastGrid({ days, onDayPress }: WeekForecastGridP
 
         <View style={s.hr} />
 
-        <View style={s.row}>
-          <View style={[s.statusCircle, { backgroundColor: mismatchColor }]}>
-            <Text style={s.statusText}>
-              {day.mismatches === 0 ? '✓' : day.mismatches}
-            </Text>
-          </View>
-          <Text style={s.label}>
-            {day.mismatches} Skill mismatch{day.mismatches !== 1 ? 'es' : ''}
-          </Text>
-        </View>
+        {isLoading ? (
+          <>
+            <View style={s.row}>
+              <View style={[s.statusCircle, { backgroundColor: colours.border.default }]}>
+                <Text style={s.statusText}>—</Text>
+              </View>
+              <Text style={[s.label, s.labelMuted]}>Loading data...</Text>
+            </View>
 
-        <View style={s.row}>
-          <View style={s.iconContainer}>
-            <DemandIcon width={18} height={18} color={colours.text.secondary} />
-          </View>
-          <Text style={s.label}>Demand: {day.demand}</Text>
-        </View>
+            <View style={s.row}>
+              <View style={s.iconContainer}>
+                <DemandIcon width={18} height={18} color={colours.text.muted} />
+              </View>
+              <Text style={[s.label, s.labelMuted]}>Demand: —</Text>
+            </View>
 
-        <View style={s.row}>
-          <View style={s.iconContainer}>
-            <TrafficIcon width={18} height={18} color={trafficIconColor} />
-          </View>
-          <Text style={[s.label, { color: trafficIconColor, fontWeight: '600' }]}>
-            {day.traffic} Traffic
-          </Text>
-        </View>
+            <View style={s.row}>
+              <View style={s.iconContainer}>
+                <TrafficIcon width={18} height={18} color={colours.text.muted} />
+              </View>
+              <Text style={[s.label, s.labelMuted]}>— Traffic</Text>
+            </View>
+          </>
+        ) : (
+          <>
+            <View style={s.row}>
+              <View style={[s.statusCircle, { backgroundColor: mismatchColor }]}>
+                <Text style={s.statusText}>
+                  {day.mismatches === 0 ? '✓' : day.mismatches}
+                </Text>
+              </View>
+              <Text style={s.label}>
+                {day.mismatches} Skill mismatch{day.mismatches !== 1 ? 'es' : ''}
+              </Text>
+            </View>
+
+            <View style={s.row}>
+              <View style={s.iconContainer}>
+                <DemandIcon width={18} height={18} color={colours.text.secondary} />
+              </View>
+              <Text style={s.label}>Demand: {day.demand}</Text>
+            </View>
+
+            <View style={s.row}>
+              <View style={s.iconContainer}>
+                <TrafficIcon width={18} height={18} color={trafficIconColor} />
+              </View>
+              <Text style={[s.label, { color: trafficIconColor, fontWeight: '600' }]}>
+                {day.traffic} Traffic
+              </Text>
+            </View>
+          </>
+        )}
       </>
     );
 
@@ -175,9 +205,9 @@ export default function WeekForecastGrid({ days, onDayPress }: WeekForecastGridP
 
 // Colour coding for mismatch severity and traffic levels
 export function getMismatchColor(mismatches: number) {
-  if (mismatches <= 1) return colours.status.success;
-  if (mismatches === 2) return colours.status.warning;
-  return colours.status.danger;
+  if (mismatches === 0) return colours.status.success;  // 0: green
+  if (mismatches <= 2) return colours.status.warning;   // 1-2: orange
+  return colours.status.danger;                          // 3+: red
 }
 
 export function trafficColor(t: 'Low' | 'Medium' | 'High') {
@@ -233,6 +263,7 @@ const s = StyleSheet.create({
   hr: { height: 1, backgroundColor: colours.border.default, marginVertical: 18 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 },
   label: { fontSize: 14, color: colours.text.secondary },
+  labelMuted: { color: colours.text.muted, fontStyle: 'italic' },
   statusCircle: {
     width: 18,
     height: 18,

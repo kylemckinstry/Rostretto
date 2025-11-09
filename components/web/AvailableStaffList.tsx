@@ -8,18 +8,30 @@ export type StaffBubble = {
   initials: string; // Two-character initials for compact display
   name: string; // Full staff member name
   tone: Tone | 'bad'; // Status indicator for border colour coding (bad maps to alert)
+  score?: number; // Optional score to display
 };
 
 export default function AvailableStaffList({ staff }: { staff: StaffBubble[] }) {
   return (
     <View style={s.grid}>
-      {staff.map((s, i) => (
-        // Individual staff bubble with status-based border colour
-        <View key={i} style={[stylesBubble.wrap, { borderColor: toneToColor(s.tone === 'bad' ? 'alert' : s.tone) }]}>
-          <Text style={stylesBubble.initials}>{s.initials}</Text>
-          <Text style={stylesBubble.name}>{s.name}</Text>
-        </View>
-      ))}
+      {staff.map((s, i) => {
+        const borderColor = toneToColor(s.tone === 'bad' ? 'alert' : s.tone);
+        const scoreColor = s.tone === 'good' ? colours.status.success 
+                         : s.tone === 'warn' ? colours.status.warning 
+                         : colours.status.danger;
+        return (
+          // Individual staff bubble with status-based border colour
+          <View key={i} style={[stylesBubble.wrap, { borderColor }]}>
+            <Text style={stylesBubble.initials}>{s.initials}</Text>
+            <Text style={stylesBubble.name}>{s.name}</Text>
+            {typeof s.score === 'number' && (
+              <Text style={[stylesBubble.score, { color: scoreColor }]}>
+                {Math.round(s.score)}
+              </Text>
+            )}
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -57,7 +69,16 @@ const stylesBubble = StyleSheet.create({
     color: colours.text.secondary, // Secondary text colour from theme
   },
   name: { 
+    flex: 1, // Take remaining space
     fontSize: 12, // Readable but compact font size
     color: colours.text.primary, // Primary text colour from theme
+  },
+  score: {
+    fontSize: 11, // Slightly smaller than name
+    fontWeight: '600', // Semi-bold for emphasis
+    paddingHorizontal: 6, // Small horizontal padding
+    paddingVertical: 2, // Minimal vertical padding
+    borderRadius: 6, // Rounded corners
+    backgroundColor: colours.bg.subtle, // Light background
   },
 });

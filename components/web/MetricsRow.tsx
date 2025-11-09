@@ -6,9 +6,12 @@ import { MOCK_DEMAND_FORECAST_METRICS, MOCK_PREVIOUS_WEEK_METRICS, type MetricCa
 
 // SVG icon components for metric visualisation
 import CoffeeIcon from '../../assets/coffee.svg';
+import SandwichIcon from '../../assets/sandwich.svg';
+import MixedIcon from '../../assets/mixed.svg';
 import TrafficIcon from '../../assets/traffic.svg';
 import TeamIcon from '../../assets/team.svg';
 import AvailabilityIcon from '../../assets/availability.svg';
+import StarIcon from '../../assets/star.svg';
 
 // Custom exclamation icon component for alert metrics
 const ExclamationIcon = ({ width = 18, height = 18, color = colours.status.danger }: { 
@@ -51,8 +54,8 @@ export default function MetricsRow({ title, cards, variant = 'demand-forecast' }
       <View style={s.container}>
         <View style={s.grid}>
           {metricsCards.map((c, i) => {
-            const IconComponent = iconComponentFor(c.kind);
-            const iconColor = colorFor(c.kind);
+            const IconComponent = iconComponentFor(c);
+            const iconColor = colorFor(c.kind, c.title);
             
             return (
               <View key={i} style={stylesCard.card}>
@@ -62,7 +65,7 @@ export default function MetricsRow({ title, cards, variant = 'demand-forecast' }
                     borderColor: iconColor,
                     borderWidth: 2,
                   }]}>
-                    <IconComponent width={16} height={16} color={iconColor} />
+                    {IconComponent && <IconComponent width={16} height={16} color={iconColor} />}
                   </View>
                 </View>
                 <Text style={stylesCard.title}>{c.title}</Text>
@@ -86,16 +89,59 @@ function generateCardsForVariant(variant: 'demand-forecast' | 'previous-week'): 
   return MOCK_DEMAND_FORECAST_METRICS;
 }
 
-function iconComponentFor(k: MetricCard['kind']) {
-  if (k === 'alert') return ExclamationIcon;
-  if (k === 'success') return TrafficIcon; // Traffic represents optimal flow and success
-  if (k === 'chart') return AvailabilityIcon; // Availability icon for staffing metrics
-  return CoffeeIcon; // Coffee icon for demand and neutral metrics
+function iconComponentFor(card: MetricCard) {
+  // Skill Mismatches always uses exclamation icon regardless of severity color
+  if (card.title === 'Skill Mismatches') {
+    return ExclamationIcon;
+  }
+  
+  // Skill Gaps uses exclamation icon
+  if (card.title === 'Skill Gaps') {
+    return ExclamationIcon;
+  }
+  
+  // Total Staff uses team/person icon
+  if (card.title === 'Total Staff') {
+    return TeamIcon;
+  }
+  
+  // Avg. Proficiency uses star icon
+  if (card.title === 'Avg. Proficiency') {
+    return StarIcon;
+  }
+  
+  // Traffic icon for all traffic-related metrics
+  if (card.title === 'Expected Traffic' || card.title === 'Expected Average Traffic' || card.title === 'Average Traffic') {
+    return TrafficIcon;
+  }
+  
+  // Overstaffed Shifts uses availability icon
+  if (card.title === 'Overstaffed Shifts') {
+    return AvailabilityIcon;
+  }
+  
+  // Demand icons based on the value
+  if (card.title === 'Primary Demand' || card.title === 'Highest Demand' || card.title === 'Highest Average Demand') {
+    const demand = card.value.toLowerCase();
+    if (demand === 'coffee') return CoffeeIcon;
+    if (demand === 'sandwiches') return SandwichIcon;
+    if (demand === 'mixed') return MixedIcon;
+    return MixedIcon; // Default to mixed for unknown demands
+  }
+  
+  // Fallback based on kind
+  if (card.kind === 'alert') return ExclamationIcon;
+  if (card.kind === 'chart') return AvailabilityIcon;
+  return null; // No icon by default
 }
 
-function colorFor(k: MetricCard['kind']) {
+function colorFor(k: MetricCard['kind'], title?: string) {
+  // Special case: Overstaffed Shifts should always be red
+  if (title === 'Overstaffed Shifts') return colours.status.danger;
+  
   if (k === 'alert') return colours.status.danger;
   if (k === 'success') return colours.status.success;
+  if (k === 'warning') return colours.status.warning;
   if (k === 'chart') return colours.brand.primary; // Keep availability as brand primary for now
   return colours.text.secondary; // Demand colour using theme secondary
 }

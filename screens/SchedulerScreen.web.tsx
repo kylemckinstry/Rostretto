@@ -6,7 +6,7 @@ import { colours } from '../theme/colours';
 import { DayIndicators } from '../state/types';
 import { TimeSlotData } from '../components/web/TimeSlot.web';
 import { scoreToTone } from '../helpers/timeUtils';
-import { generateTimeSlots, generateTimeOptions } from '../helpers/schedulerIO';
+import { generateTimeSlots, generateTimeOptions, deduplicateManualAssignments } from '../helpers/schedulerIO';
 import { generateMockWeekIndicators, DEFAULT_DAY_INDICATORS } from '../data/mock/weekIndicators';
 import { MOCK_DEMAND_FORECAST_METRICS, MOCK_PREVIOUS_WEEK_METRICS, type MetricCard } from '../data/mock/metrics';
 
@@ -17,76 +17,521 @@ import MetricsRow from '../components/web/MetricsRow';
 import AvailableStaffSidebar from '../components/web/AvailableStaffSidebar';
 import AvailableEmployeesModal from '../components/modals/AvailableEmployeesModal';
 import RemoveStaffConfirmModal from '../components/modals/RemoveStaffConfirmModal';
-import { MOCK_EMPLOYEES } from '../data/mock/employees';
 
 // Cross-platform components compatible with web
 import DateSwitch from '../components/roster/DateSwitch';
 import DateNavigator from '../components/calendar/DateNavigator';
 import TimeSlotWeb from '../components/web/TimeSlot.web';
 import type { UIEmployee } from '../viewmodels/employees';
+import { useEmployeesUI } from '../viewmodels/employees';
+
+import { subscribeWeekAssignments } from '../data/assignments.repo';
+
+import type { AssignmentDTO } from '../api/client';
+
+import { fetchWeekBundle, type WeekBundle } from '../data/scheduler.repo';
+import { buildDaySlots } from '../viewmodels/schedule';
+import { buildWeekIndicators } from '../helpers/indicators';
+
+import { api } from '../api/client';
+import Constants from 'expo-constants';
 
 const TIME_OPTIONS = generateTimeOptions();
+
+// Runtime feature flag: prefer Expo env, but allow quick toggle via window.__USE_API__ for dev
+const USE_API =
+  (typeof process !== 'undefined' && (process as any).env?.EXPO_PUBLIC_USE_API === 'true') ||
+  (Constants.expoConfig?.extra?.EXPO_PUBLIC_USE_API === 'true') ||
+  (typeof window !== 'undefined' && (window as any).__USE_API__ === true);
 
 export default function SchedulerScreenWeb() {
   const [anchorDate, setAnchorDate] = React.useState(new Date());
   const [isStaffExpanded, setIsStaffExpanded] = React.useState(false);
   const [granularity, setGranularity] = React.useState<'weekly' | 'daily'>('daily');
   const { width } = useWindowDimensions();
-  
+
+  // Load employees from API or mock based on config
+  const employeesUI = useEmployeesUI();
+
   // Daily scheduling state management
   const [selectedSlot, setSelectedSlot] = React.useState<TimeSlotData | null>(null);
   const [timeSlots, setTimeSlots] = React.useState<TimeSlotData[]>(generateTimeSlots());
-  
+
   // Remove staff confirmation modal state
   const [removeConfirm, setRemoveConfirm] = React.useState<{
     slotId: string;
     staffIndex: number;
     staffName: string;
   } | null>(null);
-  
+
   // Responsive breakpoints for adaptive layout behaviour
   const isCompact = width < 900;
   const isSmall = width < 640;
 
   // Sample weekly data for the forecast
   const weekStart = startOfWeek(anchorDate);
-  const mkKey = (d: Date) => d.toISOString().slice(0, 10);
-  const weekIndicators = generateMockWeekIndicators(weekStart);
+  const weekId = toIsoWeekId(weekStart);
+
+  React.useEffect(() => {
+    if (!USE_API) return;
+    const unsub = subscribeWeekAssignments(weekId, (rows) => {
+      // TODO: map rows -> setTimeSlots(...)
+      // Logging assignments for debugging:
+      console.log('Assignments for', weekId, rows);
+    });
+    return () => unsub?.();
+  }, [weekId]);
+
+  // LOCAL date key to avoid UTC rollover issues (e.g., Fri showing Thu)
+  const mkKey = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dd}`;
+  };
 
   // Transform week data for forecast grid component
+  // This will be replaced by weekDaysLive when bundle loads
   const weekDays: WeekForecastDay[] = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(weekStart, i);
-    const key = mkKey(d);
-    const indicators = weekIndicators[key] || DEFAULT_DAY_INDICATORS;
-    
-    // Map internal status types to display strings
-    const trafficMapping = { low: 'Low', medium: 'Medium', high: 'High' } as const;
-    const demandMapping = { Coffee: 'Coffee', Sandwich: 'Sandwiches', Mixed: 'Mixed' } as const;
-    
     return {
       date: d,
-      mismatches: indicators.mismatches,
-      demand: demandMapping[indicators.demand] || 'Mixed',
-      traffic: trafficMapping[indicators.traffic] || 'Medium',
+      mismatches: -1, // Placeholder while loading
+      demand: 'Mixed' as const,
+      traffic: 'Medium' as const,
     };
   });
 
-  // Process employee data for staff availability display
-  const staff: StaffBubble[] = MOCK_EMPLOYEES.map(emp => {
-    // Get first letters of first and last name
-    const initials = `${emp.first_name.charAt(0)}${emp.last_name.charAt(0)}`.toUpperCase();
-    
-    // Convert fairness colour to simple border colour
-    const toneMapping = { 
-      'green': 'good' as const, 
-      'yellow': 'warn' as const, 
-      'red': 'bad' as const 
+  // Create placeholder tiles while loading (shows dates but no data)
+  const placeholderDays: WeekForecastDay[] = Array.from({ length: 7 }, (_, i) => {
+    const d = addDays(weekStart, i);
+    return {
+      date: d,
+      mismatches: -1, // Special value to indicate loading
+      demand: 'Mixed' as const,
+      traffic: 'Medium' as const,
     };
+  });
+
+  // --- Scheduler API wiring (uses weekStart above) ---
+  const [isScheduling, setIsScheduling] = React.useState(false);
+
+  // NEW: live bundle + live weekly tiles
+  const [weekBundle, setWeekBundle] = React.useState<null | Awaited<ReturnType<typeof fetchWeekBundle>>>(null);
+  const [weekDaysLive, setWeekDaysLive] = React.useState<WeekForecastDay[] | null>(null);
+  
+  // Previous week data for comparison
+  const [prevWeekDays, setPrevWeekDays] = React.useState<WeekForecastDay[] | null>(null);
+
+  // Load scheduled days from localStorage for current week
+  const getScheduledDays = (): Set<string> => {
+    if (typeof window === 'undefined') return new Set();
+    const stored = window.localStorage.getItem(`scheduledDays_${weekId}`);
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  };
+
+  const [scheduledDays, setScheduledDays] = React.useState<Set<string>>(getScheduledDays());
+
+  // Save scheduled days to localStorage whenever they change
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(`scheduledDays_${weekId}`, JSON.stringify(Array.from(scheduledDays)));
+    }
+  }, [scheduledDays, weekId]);
+
+  // Reload scheduled days when week changes
+  React.useEffect(() => {
+    setScheduledDays(getScheduledDays());
+  }, [weekId]);
+
+  // Fetch week bundle when week changes (if API enabled)
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        if (!USE_API) {
+          setWeekBundle(null);
+          setWeekDaysLive(null);
+          setTimeSlots(generateTimeSlots());
+          return;
+        }
+        const bundle = await fetchWeekBundle(weekId);
+        if (cancelled) return;
+        setWeekBundle(bundle);
+
+        // Initialize scheduledDays from backend: mark days that have assignments
+        const daysWithAssignments = new Set<string>();
+        bundle.assignments.forEach(a => {
+          const shift = bundle.shifts.find(s => s.shiftId === a.shiftId);
+          if (shift?.date) {
+            daysWithAssignments.add(shift.date);
+          }
+        });
+        
+        // Merge with localStorage (in case of local state)
+        const localScheduledDays = getScheduledDays();
+        const mergedDays = new Set([...daysWithAssignments, ...localScheduledDays]);
+        setScheduledDays(mergedDays);
+
+        // Build weekly tiles from backend indicators
+        const trafficMapping = { low: 'Low', medium: 'Medium', high: 'High' } as const;
+        const demandMapping = { Coffee: 'Coffee', Sandwiches: 'Sandwich', Sandwich: 'Sandwich', Mixed: 'Mixed' } as const;
+        
+        // Calculate mismatches locally (our custom logic), but use backend's demand and traffic
+        const localIndicators = buildWeekIndicators(bundle.shifts, bundle.assignments, bundle.employees);
+        
+        // Create a map of backend indicators by date for easy lookup
+        const backendIndicatorsByDate = new Map(
+          bundle.indicators.days.map(day => [day.date, day])
+        );
+        
+        const tiles: WeekForecastDay[] = Array.from({ length: 7 }, (_, i) => {
+          const d = addDays(weekStart, i);
+          const key = mkKey(d);
+          
+          // Use locally calculated mismatches (fitness-based logic)
+          const localInd = localIndicators[key];
+          
+          // Use backend's demand and traffic (they know the business rules better)
+          const backendInd = backendIndicatorsByDate.get(key);
+          
+          return {
+            date: d,
+            mismatches: localInd?.mismatches ?? 0, // Local calculation
+            demand: (demandMapping[backendInd?.demand as keyof typeof demandMapping] || 'Mixed') as 'Coffee' | 'Sandwich' | 'Mixed', // Backend demand
+            traffic: (trafficMapping[backendInd?.traffic ?? 'medium']) as 'Low' | 'Medium' | 'High', // Backend traffic
+          };
+        });
+        setWeekDaysLive(tiles);
+
+        // Initialize time slots for the current day based on whether it has assignments
+        const dayKey = mkKey(anchorDate);
+        const dayHasAssignments = bundle.assignments.some(a => {
+          const shift = bundle.shifts.find(s => s.shiftId === a.shiftId);
+          return shift?.date === dayKey;
+        });
+        
+        if (dayHasAssignments) {
+          // Day has assignments in backend, show them
+          const dayTile = tiles.find(t => mkKey(t.date) === dayKey);
+          // UI now uses "Sandwich" consistently
+          const demand = dayTile?.demand;
+          setTimeSlots(buildDaySlots(dayKey, bundle, demand));
+        } else {
+          // No assignments yet, show empty slots
+          const dayShifts = bundle.shifts.filter(s => s.date === dayKey);
+          setTimeSlots(generateTimeSlots(dayShifts));
+        }
+      } catch (e) {
+        console.warn('fetchWeekBundle failed', e);
+        setWeekBundle(null);
+        setWeekDaysLive(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [weekId]);
+
+  // Fetch previous week's data for comparison metrics
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        if (!USE_API) {
+          setPrevWeekDays(null);
+          return;
+        }
+        
+        // Calculate previous week ID
+        const prevWeekStart = addWeeks(weekStart, -1);
+        const prevWeekId = toIsoWeekId(prevWeekStart);
+        
+        const bundle = await fetchWeekBundle(prevWeekId);
+        if (cancelled) return;
+
+        // Build weekly tiles from backend indicators for previous week
+        const trafficMapping = { low: 'Low', medium: 'Medium', high: 'High' } as const;
+        const demandMapping = { Coffee: 'Coffee', Sandwiches: 'Sandwich', Sandwich: 'Sandwich', Mixed: 'Mixed' } as const;
+        
+        // Calculate mismatches locally, use backend's demand and traffic
+        const localIndicators = buildWeekIndicators(bundle.shifts, bundle.assignments, bundle.employees);
+        
+        const backendIndicatorsByDate = new Map(
+          bundle.indicators.days.map(day => [day.date, day])
+        );
+        
+        const tiles: WeekForecastDay[] = Array.from({ length: 7 }, (_, i) => {
+          const d = addDays(prevWeekStart, i);
+          const key = mkKey(d);
+          
+          const localInd = localIndicators[key];
+          const backendInd = backendIndicatorsByDate.get(key);
+          
+          return {
+            date: d,
+            mismatches: localInd?.mismatches ?? 0,
+            demand: (demandMapping[backendInd?.demand as keyof typeof demandMapping] || 'Mixed') as 'Coffee' | 'Sandwich' | 'Mixed',
+            traffic: (trafficMapping[backendInd?.traffic ?? 'medium']) as 'Low' | 'Medium' | 'High',
+          };
+        });
+        
+        setPrevWeekDays(tiles);
+      } catch (e) {
+        console.warn('fetchPreviousWeekBundle failed', e);
+        setPrevWeekDays(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [weekId, weekStart]);
+
+  // Recompute day slots when the selected day changes (from existing bundle)
+  React.useEffect(() => {
+    if (!weekBundle) return;
+    const dayKey = mkKey(anchorDate);
     
+    // If this day has been auto-scheduled, show backend assignments
+    if (scheduledDays.has(dayKey)) {
+      const dayTile = weekDaysLive?.find(t => mkKey(t.date) === dayKey);
+      const demand = dayTile?.demand; // Already normalized to "Sandwich"
+      setTimeSlots(buildDaySlots(dayKey, weekBundle, demand));
+    } else {
+      // Not auto-scheduled: show empty slots (manual assignments in local state will remain)
+      const dayShifts = weekBundle.shifts.filter(s => s.date === dayKey);
+      setTimeSlots(generateTimeSlots(dayShifts));
+    }
+  }, [anchorDate, scheduledDays, weekBundle, weekDaysLive]); // Depend on anchorDate, scheduledDays, weekBundle, and weekDaysLive
+
+  // Helper: Save local manual assignments to backend before Auto Shift
+  async function saveLocalManualAssignments(dayKey: string) {
+    if (!weekBundle) return;
+    
+    // Get manually assigned staff from current timeSlots
+    const rawAssignments: Array<{ employee: string; slot: TimeSlotData }> = [];
+    timeSlots.forEach(slot => {
+      slot.assignedStaff.forEach(staff => {
+        rawAssignments.push({ employee: staff.name, slot });
+      });
+    });
+    
+    if (rawAssignments.length === 0) return; // No manual assignments to save
+    
+    console.log(`[saveLocalManualAssignments] Found ${rawAssignments.length} slot assignments for ${dayKey}`);
+    
+    // Find shifts for this day
+    const dayShifts = weekBundle.shifts.filter(s => s.date === dayKey);
+    if (dayShifts.length === 0) return;
+    
+    const shift = dayShifts[0]; // Use first shift for the day
+    
+    // Convert to ManualAssignment format
+    const assignments = rawAssignments.map(({ employee, slot }) => {
+      const emp = employeesUI.find(e => e.name === employee);
+      const staffMember = slot.assignedStaff.find(s => s.name === employee);
+      
+      return {
+        employeeId: emp?.employee_id || 0,
+        shiftId: shift.shiftId,
+        role: staffMember?.role?.toUpperCase() || 'MANAGER',
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+      };
+    }).filter(a => a.employeeId !== 0);
+    
+    // Deduplicate: merge consecutive slots for same employee/shift/role
+    const deduplicated = deduplicateManualAssignments(assignments);
+    
+    console.log(`[saveLocalManualAssignments] Deduplicated to ${deduplicated.length} assignments`);
+    
+    // Save each deduplicated assignment
+    for (const assignment of deduplicated) {
+      try {
+        await api.saveManualAssignment({
+          week: weekId,
+          shiftId: assignment.shiftId,
+          employeeId: assignment.employeeId,
+          role: assignment.role,
+          start_time: assignment.startTime,
+          end_time: assignment.endTime,
+        });
+      } catch (e) {
+        console.error('[saveLocalManualAssignments] Failed to save:', e);
+      }
+    }
+    
+    console.log('[saveLocalManualAssignments] Manual assignments saved successfully');
+  }
+
+  // Auto Shift for entire week (called from week view button)
+  async function runAutoScheduleWeek() {
+    setIsScheduling(true);
+    try {
+      console.log('[runAutoScheduleWeek] Cleaning up duplicate assignments...');
+      
+      // Clean up any existing duplicate manual assignments before scheduling
+      try {
+        const cleanupResult = await api.cleanupDuplicateAssignments(weekId);
+        console.log(`[runAutoScheduleWeek] Cleanup result:`, cleanupResult);
+        if (cleanupResult.deleted > 0) {
+          console.log(`[runAutoScheduleWeek] Removed ${cleanupResult.deleted} duplicate assignments`);
+        }
+      } catch (cleanupError) {
+        console.warn('[runAutoScheduleWeek] Cleanup failed (non-fatal):', cleanupError);
+      }
+      
+      console.log('[runAutoScheduleWeek] Scheduling week:', weekId);
+      await api.runSchedule(weekId);
+      console.log('[runAutoScheduleWeek] Week scheduled successfully');
+
+      // Fetch updated bundle to get the new assignments
+      const bundle = await fetchWeekBundle(weekId);
+
+      // Day view: fill slots for the current anchorDate
+      const dayKey = mkKey(anchorDate);
+      
+      // Weekly tiles: compute real indicators
+      const indicatorsByDate = buildWeekIndicators(bundle.shifts, bundle.assignments, bundle.employees);
+      const weekDaysLiveNext = Array.from({ length: 7 }, (_, i) => {
+        const d = addDays(weekStart, i);
+        const key = mkKey(d);
+        const ind = indicatorsByDate[key];
+        const demandMapping = { Coffee: 'Coffee', Sandwiches: 'Sandwich', Sandwich: 'Sandwich', Mixed: 'Mixed' } as const;
+        const trafficMapping = { low: 'Low', medium: 'Medium', high: 'High' } as const;
+        return {
+          date: d,
+          mismatches: ind?.mismatches ?? 0,
+          demand: (demandMapping[ind?.demand as keyof typeof demandMapping] || 'Mixed') as 'Coffee' | 'Sandwich' | 'Mixed',
+          traffic: trafficMapping[ind?.traffic ?? 'medium'] as 'Low' | 'Medium' | 'High',
+        };
+      });
+      
+      // Get demand for current day and build slots
+      const dayTile = weekDaysLiveNext.find(t => mkKey(t.date) === dayKey);
+      const demand = dayTile?.demand; // Already normalized to "Sandwich"
+      const slots = buildDaySlots(dayKey, bundle, demand);
+      setTimeSlots(slots);
+      
+      setWeekBundle(bundle);
+      setWeekDaysLive(weekDaysLiveNext);
+      
+      // Mark all days with assignments as scheduled
+      const daysWithAssignments = new Set<string>();
+      bundle.assignments.forEach(a => {
+        const shift = bundle.shifts.find(s => s.shiftId === a.shiftId);
+        if (shift?.date) {
+          daysWithAssignments.add(shift.date);
+        }
+      });
+      setScheduledDays(daysWithAssignments);
+
+      alert(`Schedule created for ${weekId}: ${bundle.assignments.length} assignments`);
+    } catch (e: any) {
+      console.warn(e);
+      const errorMsg = e?.message ?? String(e);
+      if (errorMsg.includes('No shifts found')) {
+        alert(`Cannot schedule ${weekId}: No shifts exist for this week. Please create shifts in the database first.`);
+      } else {
+        alert(`Scheduling error: ${errorMsg}`);
+      }
+    } finally {
+      setIsScheduling(false);
+    }
+  }
+
+  // Auto Shift for current day only (called from day view button)
+  async function runAutoScheduleDay() {
+    setIsScheduling(true);
+    try {
+      const dayKey = mkKey(anchorDate);
+      
+      // Save any remaining local manual assignments (safety net - most should already be saved)
+      await saveLocalManualAssignments(dayKey);
+      
+      // Clear local state before running Auto Shift
+      if (!weekBundle) return;
+      const dayShifts = weekBundle.shifts.filter(s => s.date === dayKey);
+      setTimeSlots(generateTimeSlots(dayShifts));
+      
+      // Check if this day is already scheduled
+      if (scheduledDays.has(dayKey)) {
+        const confirm = window.confirm(`${dayKey} is already scheduled. Re-schedule this day?`);
+        if (!confirm) {
+          setIsScheduling(false);
+          return;
+        }
+      }
+      
+      console.log('[runAutoScheduleDay] Scheduling day:', dayKey, 'for week:', weekId);
+      
+      // Call the day-specific scheduling endpoint
+      await api.runDaySchedule(weekId, dayKey);
+      console.log('[runAutoScheduleDay] Day scheduled successfully');
+
+      // Fetch updated bundle to get the new assignments
+      const bundle = await fetchWeekBundle(weekId);
+
+      // Weekly tiles: compute real indicators
+      const indicatorsByDate = buildWeekIndicators(bundle.shifts, bundle.assignments, bundle.employees);
+      const weekDaysLiveNext = Array.from({ length: 7 }, (_, i) => {
+        const d = addDays(weekStart, i);
+        const key = mkKey(d);
+        const ind = indicatorsByDate[key];
+        const trafficMapping = { low: 'Low', medium: 'Medium', high: 'High' } as const;
+        const demandMapping = { Coffee: 'Coffee', Sandwich: 'Sandwich', Mixed: 'Mixed' } as const;
+        return {
+          date: d,
+          mismatches: ind?.mismatches ?? 0,
+          demand: demandMapping[ind?.demand ?? 'Mixed'],
+          traffic: trafficMapping[ind?.traffic ?? 'medium'],
+        };
+      });
+      
+      // Get demand for current day and build slots
+      const dayTile = weekDaysLiveNext.find(t => mkKey(t.date) === dayKey);
+      const demand = dayTile?.demand; // Already normalized to "Sandwich"
+      const slots = buildDaySlots(dayKey, bundle, demand);
+      setTimeSlots(slots);
+      
+      setWeekBundle(bundle);
+      setWeekDaysLive(weekDaysLiveNext);
+      
+      // Mark this day as scheduled
+      setScheduledDays(prev => new Set(prev).add(dayKey));
+
+      const dayAssignments = bundle.assignments.filter(a => {
+        const shift = bundle.shifts.find(s => s.shiftId === a.shiftId);
+        return shift?.date === dayKey;
+      });
+      alert(`Schedule created for ${dayKey}: ${dayAssignments.length} assignments`);
+    } catch (e: any) {
+      console.warn(e);
+      const dayKey = mkKey(anchorDate);
+      const errorMsg = e?.message ?? String(e);
+      if (errorMsg.includes('No shifts found')) {
+        alert(`Cannot schedule ${dayKey}: No shifts exist for this day. Please create shifts in the database first.`);
+      } else {
+        alert(`Scheduling error: ${errorMsg}`);
+      }
+    } finally {
+      setIsScheduling(false);
+    }
+  }
+
+  // Process employee data for staff availability display
+  const staff: StaffBubble[] = employeesUI.map(emp => {
+    // Get first letters of first and last name (or first two letters if no spaces)
+    const nameParts = emp.name.split(' ');
+    const initials = nameParts.length >= 2
+      ? `${nameParts[0].charAt(0)}${nameParts[nameParts.length - 1].charAt(0)}`.toUpperCase()
+      : emp.name.substring(0, 2).toUpperCase();
+
+    // Use centralized scoreToTone function for consistency
+    const score = emp.score ?? 0;
+    const tone = scoreToTone(score) as 'good' | 'warn' | 'bad';
+
     return {
       initials,
       name: emp.name,
-      tone: toneMapping[emp.fairnessColor],
+      tone,
+      score,
     };
   });
 
@@ -104,6 +549,43 @@ export default function SchedulerScreenWeb() {
     setSelectedSlot(null);
   };
 
+  // Check if an employee is already assigned in the given time range
+  const isEmployeeAssigned = (employeeName: string, start: string, end: string): boolean => {
+    const startIndex = TIME_OPTIONS.findIndex(time => time === start);
+    const endIndex = TIME_OPTIONS.findIndex(time => time === end);
+
+    return timeSlots.some(slot => {
+      const slotStartIndex = TIME_OPTIONS.findIndex(time => time === slot.startTime);
+      // Check if this slot is in the requested range
+      if (slotStartIndex >= startIndex && slotStartIndex < endIndex) {
+        // Check if employee is already assigned to this slot
+        return slot.assignedStaff.some(staff => staff.name === employeeName);
+      }
+      return false;
+    });
+  };
+
+  // Helper to recalculate indicators after assignment changes
+  const recalculateIndicators = (bundle: WeekBundle) => {
+    const indicatorsByDate = buildWeekIndicators(bundle.shifts, bundle.assignments, bundle.employees);
+    const trafficMapping = { low: 'Low', medium: 'Medium', high: 'High' } as const;
+    const demandMapping = { Coffee: 'Coffee', Sandwiches: 'Sandwich', Sandwich: 'Sandwich', Mixed: 'Mixed' } as const;
+    
+    const updatedTiles = Array.from({ length: 7 }, (_, i) => {
+      const d = addDays(weekStart, i);
+      const key = mkKey(d);
+      const ind = indicatorsByDate[key];
+      
+      return {
+        date: d,
+        mismatches: ind?.mismatches ?? 0,
+        demand: (demandMapping[ind?.demand as keyof typeof demandMapping] || 'Mixed') as 'Coffee' | 'Sandwich' | 'Mixed',
+        traffic: (trafficMapping[ind?.traffic ?? 'medium']) as 'Low' | 'Medium' | 'High',
+      };
+    });
+    setWeekDaysLive(updatedTiles);
+  };
+
   const handleRemoveStaff = (slotId: string, staffIndex: number, staffName: string) => {
     // Show confirmation modal
     setRemoveConfirm({ slotId, staffIndex, staffName });
@@ -111,52 +593,270 @@ export default function SchedulerScreenWeb() {
 
   const handleRemoveAll = () => {
     if (!removeConfirm) return;
-    
-    // Remove from all slots
-    setTimeSlots(slots => 
+
+    // Remove from all slots in local state
+    setTimeSlots(slots =>
       slots.map(slot => ({
         ...slot,
         assignedStaff: slot.assignedStaff.filter(staff => staff.name !== removeConfirm.staffName),
       }))
     );
-    
+
+    // Save to backend: delete all assignments for this employee on this day
+    // Clear day and rebuild without this employee
+    (async () => {
+      try {
+        const dayKey = mkKey(anchorDate);
+        const emp = employeesUI.find(e => e.name === removeConfirm.staffName);
+        if (!emp || !weekBundle) return;
+
+        const dayShifts = weekBundle.shifts.filter(s => s.date === dayKey);
+        if (dayShifts.length === 0) return;
+
+        // Check if any assignments for this employee are auto-generated
+        const employeeAssignments = weekBundle.assignments.filter(a => {
+          const shift = weekBundle.shifts.find(s => s.shiftId === a.shiftId);
+          return shift?.date === dayKey && a.employeeId === emp.employee_id;
+        });
+
+        const hasAutoAssignments = employeeAssignments.some(a => !a.isManual);
+
+        if (hasAutoAssignments) {
+          // Has auto assignments - need to clear day and rebuild without this employee
+          console.log(`[handleRemoveAll] Converting auto assignment day to manual (removing employee)`);
+          
+          // Get ALL current time slots from UI
+          const currentDaySlots = timeSlots.filter(ts => ts.assignedStaff.length > 0);
+
+          // Clear the entire day
+          await api.clearDay(weekId, dayKey);
+          console.log(`[handleRemoveAll] Cleared day ${dayKey}`);
+
+          // Save back all slots EXCEPT those for the removed employee
+          let savedCount = 0;
+          const shift = dayShifts[0];
+          
+          for (const ts of currentDaySlots) {
+            for (const staff of ts.assignedStaff) {
+              // Skip slots for the employee being removed
+              if (staff.name === removeConfirm.staffName) {
+                console.log(`[handleRemoveAll] Skipping slot for removed employee: ${ts.startTime}-${ts.endTime}`);
+                continue;
+              }
+
+              // Find employee by name
+              const empObj = employeesUI.find(e => e.name === staff.name);
+              if (!empObj) continue;
+
+              // Save as manual assignment
+              await api.saveManualAssignment({
+                week: weekId,
+                shiftId: shift.shiftId,
+                employeeId: empObj.employee_id,
+                role: staff.role.toUpperCase(),
+                start_time: ts.startTime,
+                end_time: ts.endTime,
+              });
+              savedCount++;
+            }
+          }
+
+          console.log(`[handleRemoveAll] ✓ Converted day to manual: saved ${savedCount} slots, removed employee ${removeConfirm.staffName}`);
+        } else {
+          // All manual assignments - just delete them
+          const manualAssignments = employeeAssignments.filter(a => a.isManual === true);
+          
+          console.log(`[handleRemoveAll] Found ${manualAssignments.length} manual assignments to delete`);
+
+          for (const assignment of manualAssignments) {
+            await api.deleteManualAssignment(weekId, String(assignment.id));
+          }
+
+          if (manualAssignments.length > 0) {
+            console.log(`[handleRemoveAll] ✓ Deleted ${manualAssignments.length} manual assignments`);
+          }
+        }
+        
+        // Refresh bundle to get updated state
+        const bundle = await fetchWeekBundle(weekId);
+        setWeekBundle(bundle);
+        
+        // Recalculate indicators with new assignments
+        recalculateIndicators(bundle);
+      } catch (e) {
+        console.error('[handleRemoveAll] Failed to delete from backend:', e);
+      }
+    })();
+
     setRemoveConfirm(null);
   };
 
   const handleRemoveOne = () => {
     if (!removeConfirm) return;
-    
-    // Remove from just this slot
-    setTimeSlots(slots => 
-      slots.map(slot => {
-        if (slot.id === removeConfirm.slotId) {
-          const newStaff = [...slot.assignedStaff];
+
+    // Find the slot being modified
+    const slot = timeSlots.find(s => s.id === removeConfirm.slotId);
+    if (!slot) return;
+
+    // Remove from just this slot in local state
+    setTimeSlots(slots =>
+      slots.map(s => {
+        if (s.id === removeConfirm.slotId) {
+          const newStaff = [...s.assignedStaff];
           newStaff.splice(removeConfirm.staffIndex, 1);
-          return { ...slot, assignedStaff: newStaff };
+          return { ...s, assignedStaff: newStaff };
         }
-        return slot;
+        return s;
       })
     );
-    
+
+    // Save to backend: delete assignment for this specific time slot
+    // If it's an auto-generated assignment, we need to convert the entire day to manual
+    (async () => {
+      try {
+        const dayKey = mkKey(anchorDate);
+        const emp = employeesUI.find(e => e.name === removeConfirm.staffName);
+        if (!emp || !weekBundle) {
+          console.log(`[handleRemoveOne] Missing emp or weekBundle`, { emp: !!emp, weekBundle: !!weekBundle });
+          return;
+        }
+
+        const dayShifts = weekBundle.shifts.filter(s => s.date === dayKey);
+        if (dayShifts.length === 0) {
+          console.log(`[handleRemoveOne] No shifts found for ${dayKey}`);
+          return;
+        }
+
+        const shift = dayShifts[0];
+
+        // Find the specific assignment to delete
+        const assignmentToDelete = weekBundle.assignments.find(a => {
+          const sh = weekBundle.shifts.find(s => s.shiftId === a.shiftId);
+          return (
+            sh?.date === dayKey &&
+            a.employeeId === emp.employee_id &&
+            a.shiftId === shift.shiftId &&
+            a.startTime === slot.startTime &&
+            a.endTime === slot.endTime
+          );
+        });
+
+        if (!assignmentToDelete) {
+          console.warn(`[handleRemoveOne] ✗ Assignment not found`);
+          return;
+        }
+
+        if (assignmentToDelete.isManual) {
+          // Manual assignment - just delete it
+          console.log(`[handleRemoveOne] Deleting manual assignment ${assignmentToDelete.id}`);
+          await api.deleteManualAssignment(weekId, String(assignmentToDelete.id));
+          console.log(`[handleRemoveOne] ✓ Deleted manual assignment`);
+        } else {
+          // Auto-generated assignment - need to clear day and rebuild without this slot
+          console.log(`[handleRemoveOne] Converting auto assignment day to manual`);
+          
+          // Get ALL current time slots from UI (this has the actual rendered state)
+          const currentDaySlots = timeSlots.filter(ts => {
+            // Only include slots that have assigned staff
+            return ts.assignedStaff.length > 0;
+          });
+
+          console.log(`[handleRemoveOne] Found ${currentDaySlots.length} active time slots in UI`);
+
+          // Clear the entire day
+          await api.clearDay(weekId, dayKey);
+          console.log(`[handleRemoveOne] Cleared day ${dayKey}`);
+
+          // Save back all current UI slots as manual assignments EXCEPT the one being removed
+          let savedCount = 0;
+          const dayShifts = weekBundle.shifts.filter(s => s.date === dayKey);
+          const shift = dayShifts[0];
+          
+          if (!shift) {
+            console.error('[handleRemoveOne] No shift found for day');
+            return;
+          }
+
+          for (const ts of currentDaySlots) {
+            for (const staff of ts.assignedStaff) {
+              // Skip the slot being removed
+              if (
+                ts.id === removeConfirm.slotId &&
+                staff.name === removeConfirm.staffName
+              ) {
+                console.log(`[handleRemoveOne] Skipping removed slot: ${ts.startTime}-${ts.endTime} for ${staff.name}`);
+                continue;
+              }
+
+              // Find employee by name
+              const emp = employeesUI.find(e => e.name === staff.name);
+              if (!emp) {
+                console.warn(`[handleRemoveOne] Employee not found: ${staff.name}`);
+                continue;
+              }
+
+              // Save as manual assignment
+              await api.saveManualAssignment({
+                week: weekId,
+                shiftId: shift.shiftId,
+                employeeId: emp.employee_id,
+                role: staff.role.toUpperCase(),
+                start_time: ts.startTime,
+                end_time: ts.endTime,
+              });
+              savedCount++;
+            }
+          }
+
+          console.log(`[handleRemoveOne] ✓ Converted day to manual: saved ${savedCount} slots, removed 1 slot`);
+        }
+        
+        // Refresh bundle to get updated state
+        const bundle = await fetchWeekBundle(weekId);
+        setWeekBundle(bundle);
+        
+        // Recalculate indicators with new assignments
+        recalculateIndicators(bundle);
+      } catch (e) {
+        console.error('[handleRemoveOne] Failed to delete from backend:', e);
+        alert('Failed to remove assignment. Please try again.');
+      }
+    })();
+
     setRemoveConfirm(null);
   };
 
   const handleAssignStaff = ({ employee, start, end, role }: { employee: UIEmployee; start: string; end: string; role?: string }) => {
+    // Check if employee is already assigned to any overlapping time slot
+    const startIndex = TIME_OPTIONS.findIndex(time => time === start);
+    const endIndex = TIME_OPTIONS.findIndex(time => time === end);
+
+    const hasOverlap = timeSlots.some(slot => {
+      const slotStartIndex = TIME_OPTIONS.findIndex(time => time === slot.startTime);
+      // Check if this slot is in the requested range
+      if (slotStartIndex >= startIndex && slotStartIndex < endIndex) {
+        // Check if employee is already assigned to this slot
+        return slot.assignedStaff.some(staff => staff.name === employee.name);
+      }
+      return false;
+    });
+
+    if (hasOverlap) {
+      // This shouldn't happen since the UI should disable the employee, but just in case
+      console.warn(`[handleAssignStaff] Employee ${employee.name} is already assigned to overlapping slot`);
+      return;
+    }
+
+    // Add to local state for immediate UI feedback
     const newStaffMember = {
       name: employee.name,
-      role: role || 'Mixed', // Use provided role or default to Mixed
+      role: role || 'Manager',
       tone: scoreToTone(employee.score),
     };
 
-    // Find all slots that fall within the start and end time range
-    const startIndex = TIME_OPTIONS.findIndex(time => time === start);
-    const endIndex = TIME_OPTIONS.findIndex(time => time === end);
-    
-    setTimeSlots(slots => 
+    setTimeSlots(slots =>
       slots.map(slot => {
         const slotStartIndex = TIME_OPTIONS.findIndex(time => time === slot.startTime);
-        
-        // Assign to all slots that overlap with the time range
         if (slotStartIndex >= startIndex && slotStartIndex < endIndex) {
           return {
             ...slot,
@@ -166,31 +866,173 @@ export default function SchedulerScreenWeb() {
         return slot;
       })
     );
-    
-    // Clear selection after assigning staff
+
+    // Save to backend immediately
+
+    // Save to backend immediately
+    (async () => {
+      try {
+        if (!weekBundle) return;
+        const dayKey = mkKey(anchorDate);
+        const dayShifts = weekBundle.shifts.filter(s => s.date === dayKey);
+        if (dayShifts.length === 0) return;
+
+        const shift = dayShifts[0];
+
+        await api.saveManualAssignment({
+          week: weekId,
+          shiftId: shift.shiftId,
+          employeeId: employee.employee_id,
+          role: (role || 'Manager').toUpperCase(),
+          start_time: start,
+          end_time: end,
+        });
+
+        console.log(`[handleAssignStaff] Saved manual assignment: ${employee.name} to ${start}-${end} as ${role || 'Mixed'}`);
+        
+        // Refresh bundle to get updated state
+        const bundle = await fetchWeekBundle(weekId);
+        setWeekBundle(bundle);
+        
+        // Recalculate indicators with new assignments
+        recalculateIndicators(bundle);
+        
+        // Update scheduledDays to mark this day as having assignments
+        setScheduledDays(prev => new Set(prev).add(dayKey));
+      } catch (e) {
+        console.error('[handleAssignStaff] Failed to save to backend:', e);
+        alert('Failed to save assignment. Please try again.');
+      }
+    })();
+
     setSelectedSlot(null);
   };
 
   // Daily metrics based on current day data
-  const dailyMetrics: MetricCard[] = [
-    { kind: 'alert', title: 'Skill Mismatches', value: String(timeSlots.reduce((sum, slot) => sum + slot.mismatches, 0)) },
-    { kind: 'neutral', title: 'Primary Demand', value: 'Mixed' },
-    { kind: 'success', title: 'Expected Traffic', value: 'Medium' },
-    { kind: 'chart', title: 'Availability', value: 'High' },
-  ];
+  const dailyMetrics: MetricCard[] = React.useMemo(() => {
+    // Get the tile for today to access the day's mismatch count from indicators
+    const tile = (weekDaysLive ?? []).find(d => d.date.toDateString() === anchorDate.toDateString());
+    const mismatchesTotal = tile?.mismatches ?? 0;
+    const primaryDemand = tile?.demand ?? 'Mixed';
+    const expectedTraffic = tile?.traffic ?? 'Medium';
+
+    // Map traffic level to color kind
+    const trafficKind = expectedTraffic === 'Low' 
+      ? 'success' 
+      : expectedTraffic === 'High' 
+        ? 'alert' 
+        : 'warning'; // Medium
+
+    // Map mismatch count to color kind (0: green, 1-2: orange, 3+: red)
+    const mismatchKind = mismatchesTotal === 0 
+      ? 'success' 
+      : mismatchesTotal <= 2 
+        ? 'warning' 
+        : 'alert';
+
+    // Placeholder for now; wire to availability once ready
+    const availability = '—';
+
+    return [
+      { kind: mismatchKind, title: 'Skill Mismatches', value: String(mismatchesTotal) },
+      { kind: 'neutral', title: 'Primary Demand', value: primaryDemand },
+      { kind: trafficKind, title: 'Expected Traffic', value: expectedTraffic },
+      { kind: 'chart', title: 'Availability', value: availability },
+    ];
+  }, [weekDaysLive, anchorDate]);
 
   // Format current day date for navigation
   const formatDayDate = (date: Date) => {
-    return date.toLocaleDateString(undefined, { 
-      weekday: 'long', 
-      month: 'long', 
-      day: 'numeric', 
-      year: 'numeric' 
+    return date.toLocaleDateString(undefined, {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
     });
   };
 
-  // Performance metrics for current week forecast
-  const demandMetrics: MetricCard[] = MOCK_DEMAND_FORECAST_METRICS;
+  // Calculate weekly demand forecast metrics from weekDaysLive
+  const demandMetrics: MetricCard[] = React.useMemo(() => {
+    if (!weekDaysLive || weekDaysLive.length === 0) {
+      return [
+        { kind: 'neutral', title: 'Skill Mismatches', value: '—' },
+        { kind: 'neutral', title: 'Highest Average Demand', value: '—' },
+        { kind: 'neutral', title: 'Expected Average Traffic', value: '—' },
+        { kind: 'neutral', title: 'Average Availability', value: '—' },
+      ];
+    }
+
+    // Total skill mismatches across the week
+    const totalMismatches = weekDaysLive.reduce((sum, day) => sum + day.mismatches, 0);
+    const mismatchKind = totalMismatches === 0 ? 'success' : totalMismatches <= 2 ? 'warning' : 'alert';
+
+    // Most common demand type
+    const demandCounts = weekDaysLive.reduce((acc, day) => {
+      acc[day.demand] = (acc[day.demand] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    const highestDemand = Object.entries(demandCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Mixed';
+
+    // Average traffic level (convert to numeric, average, convert back)
+    const trafficValues = { 'Low': 1, 'Medium': 2, 'High': 3 };
+    const trafficLabels = { 1: 'Low', 2: 'Medium', 3: 'High' };
+    const avgTrafficValue = Math.round(
+      weekDaysLive.reduce((sum, day) => sum + trafficValues[day.traffic], 0) / weekDaysLive.length
+    );
+    const avgTraffic = trafficLabels[avgTrafficValue as keyof typeof trafficLabels] || 'Medium';
+    const trafficKind = avgTraffic === 'High' ? 'alert' : avgTraffic === 'Medium' ? 'warning' : 'success';
+
+    // Calculate availability from employee data
+    const availability = weekBundle && employeesUI.length > 0
+      ? employeesUI.length >= 10 ? 'High' : employeesUI.length >= 5 ? 'Medium' : 'Low'
+      : 'Medium';
+
+    return [
+      { kind: mismatchKind, title: 'Skill Mismatches', value: String(totalMismatches) },
+      { kind: 'neutral', title: 'Highest Average Demand', value: highestDemand },
+      { kind: trafficKind, title: 'Expected Average Traffic', value: avgTraffic },
+      { kind: 'chart', title: 'Average Availability', value: availability },
+    ];
+  }, [weekDaysLive, weekBundle, employeesUI]);
+
+  // Calculate previous week metrics
+  const prevWeekMetrics: MetricCard[] = React.useMemo(() => {
+    if (!prevWeekDays || prevWeekDays.length === 0) {
+      return [
+        { kind: 'neutral', title: 'Skill Mismatches', value: '—' },
+        { kind: 'neutral', title: 'Highest Demand', value: '—' },
+        { kind: 'neutral', title: 'Average Traffic', value: '—' },
+        { kind: 'neutral', title: 'Overstaffed Shifts', value: '—' },
+      ];
+    }
+
+    // Total skill mismatches across previous week
+    const totalMismatches = prevWeekDays.reduce((sum, day) => sum + day.mismatches, 0);
+    const mismatchKind = totalMismatches === 0 ? 'success' : totalMismatches <= 2 ? 'warning' : 'alert';
+
+    // Most common demand type in previous week
+    const demandCounts = prevWeekDays.reduce((acc, day) => {
+      acc[day.demand] = (acc[day.demand] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    const highestDemand = Object.entries(demandCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Mixed';
+
+    // Average traffic level from previous week
+    const trafficValues = { 'Low': 1, 'Medium': 2, 'High': 3 };
+    const trafficLabels = { 1: 'Low', 2: 'Medium', 3: 'High' };
+    const avgTrafficValue = Math.round(
+      prevWeekDays.reduce((sum, day) => sum + trafficValues[day.traffic], 0) / prevWeekDays.length
+    );
+    const avgTraffic = trafficLabels[avgTrafficValue as keyof typeof trafficLabels] || 'Medium';
+    const trafficKind = avgTraffic === 'High' ? 'alert' : avgTraffic === 'Medium' ? 'warning' : 'success';
+
+    return [
+      { kind: mismatchKind, title: 'Skill Mismatches', value: String(totalMismatches) },
+      { kind: 'neutral', title: 'Highest Demand', value: highestDemand },
+      { kind: trafficKind, title: 'Average Traffic', value: avgTraffic },
+      { kind: 'alert', title: 'Overstaffed Shifts', value: '—' },
+    ];
+  }, [prevWeekDays]);
 
   return (
     <View style={{ flex: 1, backgroundColor: colours.bg.muted }}>
@@ -236,7 +1078,7 @@ export default function SchedulerScreenWeb() {
               <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Weekly Forecast</Text>
                 <WeekForecastGrid
-                  days={weekDays}
+                  days={USE_API ? (weekDaysLive ?? placeholderDays) : weekDays}
                   onDayPress={(date) => {
                     setAnchorDate(date);
                     setGranularity('daily');
@@ -245,8 +1087,13 @@ export default function SchedulerScreenWeb() {
               </View>
 
               {/* Quick action button for automatic shift generation */}
-              <Pressable style={styles.autoShiftBtn} onPress={() => { /* modal placeholder */ }}>
-                <Text style={styles.autoShiftText}>+  Auto Shift</Text>
+              <Pressable
+                style={[styles.autoShiftBtn, isScheduling && { opacity: 0.6 }]}
+                disabled={isScheduling}
+                onPress={runAutoScheduleWeek}
+
+              >
+                <Text style={styles.autoShiftText}>{isScheduling ? 'Scheduling…' : '+  Auto Shift'}</Text>
               </Pressable>
 
               {/* Current week analytics */}
@@ -256,7 +1103,7 @@ export default function SchedulerScreenWeb() {
 
               {/* Historical performance data */}
               <View style={styles.section}>
-                <MetricsRow title="Previous Week Overview" variant="previous-week" />
+                <MetricsRow title="Previous Week Overview" cards={prevWeekMetrics} />
               </View>
 
               {/* Staff availability overview - only show in weekly view */}
@@ -322,13 +1169,18 @@ export default function SchedulerScreenWeb() {
                     <View style={[styles.staffColumn, isCompact && styles.staffColumnCompact]}>
                       <View style={styles.stickyStaffContainer}>
                         {/* Quick action button for automatic shift generation */}
-                        <Pressable style={styles.autoShiftBtnStaff} onPress={() => { /* modal placeholder */ }}>
-                          <Text style={styles.autoShiftText}>+  Auto Shift</Text>
+                        <Pressable 
+                          style={[styles.autoShiftBtnStaff, isScheduling && { opacity: 0.6 }]}
+                          onPress={runAutoScheduleDay}
+                          disabled={isScheduling}
+                        >
+                          <Text style={styles.autoShiftText}>{isScheduling ? 'Scheduling…' : '+  Auto Shift'}</Text>
                         </Pressable>
                         <AvailableStaffSidebar
                           selectedSlot={selectedSlot}
                           onAssign={handleAssignStaff}
                           onCancel={handleCancelAssignment}
+                          isEmployeeAssigned={isEmployeeAssigned}
                         />
                       </View>
                     </View>
@@ -444,11 +1296,11 @@ const styles = StyleSheet.create({
     flex: 1,
     marginBottom: 0,
   },
-  sectionTitle: { 
-    fontSize: 16, 
-    fontWeight: '700', 
-    marginBottom: 8, 
-    color: colours.text.primary 
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 8,
+    color: colours.text.primary
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -480,10 +1332,10 @@ const styles = StyleSheet.create({
   staffListContainer: {
     marginTop: 16,
   },
-  dropdownHint: { 
-    fontSize: 16, 
-    opacity: 0.7, 
-    color: colours.text.muted 
+  dropdownHint: {
+    fontSize: 16,
+    opacity: 0.7,
+    color: colours.text.muted
   },
   autoShiftBtn: {
     alignSelf: 'center',
@@ -591,4 +1443,15 @@ const styles = StyleSheet.create({
 
 if (Platform.OS !== 'web') {
   console.warn('SchedulerScreen.web.tsx loaded on non-web platform');
+}
+
+// Produce 'YYYY-Www' (ISO-like) for the backend week key
+function toIsoWeekId(d: Date): string {
+  const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  dt.setUTCDate(dt.getUTCDate() + 4 - ((dt.getUTCDay() || 7))); // Thursday trick
+  const yearStart = new Date(Date.UTC(dt.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((dt.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  const y = dt.getUTCFullYear();
+  const ww = String(weekNo).padStart(2, '0');
+  return `${y}-W${ww}`;
 }

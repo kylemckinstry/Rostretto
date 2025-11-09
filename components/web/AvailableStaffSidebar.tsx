@@ -13,7 +13,10 @@ type Props = {
   selectedSlot: TimeSlotData | null;
   onAssign: (opts: { employee: UIEmployee; start: string; end: string; role?: string }) => void;
   onCancel?: () => void;
-};export default function AvailableStaffSidebar({ selectedSlot, onAssign, onCancel }: Props) {
+  isEmployeeAssigned: (employeeName: string, start: string, end: string) => boolean;
+};
+
+export default function AvailableStaffSidebar({ selectedSlot, onAssign, onCancel, isEmployeeAssigned }: Props) {
   const employees = useEmployeesUI();
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
   const [byIdTimes, setByIdTimes] = React.useState<Record<string, { start: string; end: string; role: string }>>(
@@ -30,9 +33,9 @@ type Props = {
 
   const ensureTimes = (id: string) => {
     if (!byIdTimes[id]) {
-      const defaultStart = selectedSlot?.startTime || '6:00 am';
-      const defaultEnd = selectedSlot?.endTime || '6:30 am';
-      const defaultRole = 'Mixed'; // Default role
+      const defaultStart = selectedSlot?.startTime || '7:00 am';
+      const defaultEnd = selectedSlot?.endTime || '7:30 am';
+      const defaultRole = 'Manager'; // Default role
       setByIdTimes((x) => ({ 
         ...x, 
         [id]: { start: defaultStart, end: defaultEnd, role: defaultRole } 
@@ -42,9 +45,9 @@ type Props = {
 
   const handleAssign = (employee: UIEmployee) => {
     const times = byIdTimes[employee.id] || { 
-      start: selectedSlot?.startTime || '6:00 am', 
-      end: selectedSlot?.endTime || '6:30 am',
-      role: 'Mixed'
+      start: selectedSlot?.startTime || '7:00 am', 
+      end: selectedSlot?.endTime || '7:30 am',
+      role: 'Manager'
     };
     
     onAssign({ employee, start: times.start, end: times.end, role: times.role });
@@ -81,14 +84,27 @@ type Props = {
           const tone = scoreToTone(score);
           const border = toneToColor(tone);
           const times = byIdTimes[item.id] ?? { 
-            start: selectedSlot?.startTime || '6:00 am', 
-            end: selectedSlot?.endTime || '6:30 am',
-            role: 'Mixed'
+            start: selectedSlot?.startTime || '7:00 am', 
+            end: selectedSlot?.endTime || '7:30 am',
+            role: 'Manager'
           };
           const isOpen = expandedId === item.id;
-          const canAssign = true; // Always allow expanding and assigning
+          
+          // Check if employee is already assigned to the selected slot's time range
+          // This happens when user clicks '+' on a timeslot
+          const isAssignedToSelectedSlot = selectedSlot && isEmployeeAssigned(
+            name, 
+            selectedSlot.startTime, 
+            selectedSlot.endTime
+          );
+          
+          // Only check overlap when expanded to show proper button state
+          const hasOverlap = isOpen && isEmployeeAssigned(name, times.start, times.end);
 
           const toggle = () => {
+            // Don't allow expanding if already assigned to the selected slot
+            if (isAssignedToSelectedSlot) return;
+            
             ensureTimes(item.id);
             setExpandedId((e) => (e === item.id ? null : item.id));
           };
@@ -97,32 +113,53 @@ type Props = {
             <View 
               style={[
                 s.card, 
-                isOpen && s.cardExpanded
+                isOpen && s.cardExpanded,
+                isAssignedToSelectedSlot && s.cardDisabled
               ]}
             >
               <Pressable 
                 onPress={toggle} 
                 style={s.employeeInfoSection}
                 accessibilityRole="button"
+                disabled={isAssignedToSelectedSlot}
               >
                 <View style={s.row}>
                   <View style={s.left}>
-                    <View style={[s.initial, { borderColor: border }]}>
-                      <Text style={[s.initialText, { color: border }]}>
+                    <View style={[
+                      s.initial, 
+                      { borderColor: border },
+                      isAssignedToSelectedSlot && s.initialDisabled
+                    ]}>
+                      <Text style={[
+                        s.initialText, 
+                        { color: border },
+                        isAssignedToSelectedSlot && s.textDisabled
+                      ]}>
                         {name.charAt(0).toUpperCase()}
                       </Text>
                     </View>
-                    <Text style={s.name}>{name}</Text>
+                    <Text style={[
+                      s.name,
+                      isAssignedToSelectedSlot && s.textDisabled
+                    ]}>{name}</Text>
                   </View>
                   <View style={s.right}>
-                    <View style={[s.scoreBox, { borderColor: border }]}>
-                      <Text style={[s.scoreText, { color: border }]}>{score}</Text>
+                    <View style={[
+                      s.scoreBox, 
+                      { borderColor: border },
+                      isAssignedToSelectedSlot && s.scoreBoxDisabled
+                    ]}>
+                      <Text style={[
+                        s.scoreText, 
+                        { color: border },
+                        isAssignedToSelectedSlot && s.textDisabled
+                      ]}>{score}</Text>
                     </View>
                   </View>
                 </View>
               </Pressable>
 
-              {isOpen && canAssign && (
+              {isOpen && (
                 <>
                   <View style={s.divider} />
                   <View style={{ gap: 10 }}>
@@ -177,9 +214,12 @@ type Props = {
 
                     <Pressable
                       onPress={() => handleAssign(item)}
-                      style={s.assignBtn}
+                      style={[s.assignBtn, hasOverlap && s.assignBtnDisabled]}
+                      disabled={hasOverlap}
                     >
-                      <Text style={s.assignBtnText}>Assign Shift</Text>
+                      <Text style={[s.assignBtnText, hasOverlap && s.assignBtnTextDisabled]}>
+                        {hasOverlap ? 'Already Assigned' : 'Assign Shift'}
+                      </Text>
                     </Pressable>
                   </View>
                 </>
@@ -395,19 +435,29 @@ const s = StyleSheet.create({
     fontWeight: '700', 
     fontSize: 14 
   },
-
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 40,
+  assignBtnDisabled: {
+    backgroundColor: colours.bg.subtle,
+    borderWidth: 1,
+    borderColor: colours.border.default,
   },
-  emptyText: {
+  assignBtnTextDisabled: {
     color: colours.text.muted,
-    fontSize: 14,
-    textAlign: 'center',
-    fontStyle: 'italic',
   },
 
-
+  // Disabled state styles when employee is already assigned to the selected slot
+  cardDisabled: {
+    opacity: 0.5,
+    backgroundColor: colours.bg.subtle,
+  },
+  initialDisabled: {
+    borderColor: colours.border.default,
+    backgroundColor: colours.bg.subtle,
+  },
+  textDisabled: {
+    color: colours.text.muted,
+  },
+  scoreBoxDisabled: {
+    borderColor: colours.border.default,
+    backgroundColor: colours.bg.subtle,
+  },
 });

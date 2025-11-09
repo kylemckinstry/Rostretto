@@ -21,21 +21,63 @@ export function toMinutes(timeStr: string): number {
   return hours * 60 + minutes;
 }
 
-// Convert employee score (0-100) to tone indicator
+// Convert employee score (0-100 scale) to tone indicator
+// Based on normalized fitness threshold: 70%+ = good, 50-69% = warn, <50% = alert
 export function scoreToTone(score?: number): 'good' | 'warn' | 'alert' {
   const value = score ?? 0;
-  if (value >= 80) return 'good';
-  if (value >= 56) return 'warn';
-  return 'alert';
+  if (value >= 70) return 'good';   // 70+ = green (good fit for role)
+  if (value >= 50) return 'warn';   // 50-69 = orange (acceptable fit)
+  return 'alert';                   // <50 = red (poor fit - mismatch)
 }
 
-// Convert internal role code to display name
+// Calculate fitness for employee based on day's demand
+// Returns score 0-100 based on relevant skills weighted by demand type
+export function calculateFitness(
+  employee: { skillCoffee?: number; skillSandwich?: number; customerService?: number; speed?: number },
+  demand: 'Coffee' | 'Sandwich' | 'Mixed' | null
+): number {
+  if (!demand || demand === 'Mixed') {
+    // Mixed demand: average all skills
+    return ((employee.skillCoffee ?? 0) + (employee.skillSandwich ?? 0) + 
+            (employee.customerService ?? 0) + (employee.speed ?? 0)) / 4;
+  }
+  
+  if (demand === 'Coffee') {
+    // Coffee demand: weight coffee skill more heavily
+    const coffee = employee.skillCoffee ?? 0;
+    const cs = employee.customerService ?? 0;
+    const speed = employee.speed ?? 0;
+    return (coffee * 0.6 + cs * 0.2 + speed * 0.2);
+  }
+  
+  if (demand === 'Sandwich') {
+    // Sandwich demand: weight sandwich skill more heavily
+    const sandwich = employee.skillSandwich ?? 0;
+    const cs = employee.customerService ?? 0;
+    const speed = employee.speed ?? 0;
+    return (sandwich * 0.6 + cs * 0.2 + speed * 0.2);
+  }
+  
+  return 0;
+}
+
+// Convert internal role code to display name (capital case format)
 export function roleToDisplayName(role: string): string {
   const roleMap: Record<string, string> = {
-    'BARISTA': 'Coffee',
+    // Uppercase API format
+    'BARISTA': 'Barista',
     'SANDWICH': 'Sandwich',
-    'WAITER': 'Cashier',
+    'WAITER': 'Waiter',
     'MANAGER': 'Manager',
+    'MIXED': 'Mixed',
+    'COFFEE': 'Coffee',
+    // Capital case versions (pass through)
+    'Barista': 'Barista',
+    'Sandwich': 'Sandwich',
+    'Waiter': 'Waiter',
+    'Manager': 'Manager',
+    'Mixed': 'Mixed',
+    'Coffee': 'Coffee',
   };
-  return roleMap[role] || 'Mixed';
+  return roleMap[role] || role;
 }

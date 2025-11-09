@@ -15,7 +15,8 @@ import ShiftBreakdown from '../components/employees/ShiftBreakdown';
 import CollapsibleSection from '../components/employees/CollapsibleSection';
 import TrainingCard from '../components/employees/TrainingCard';
 import { X } from 'lucide-react-native';
-import { colours } from '../theme/colours';
+import { colours, toneToColor } from '../theme/colours';
+import { scoreToTone } from '../helpers/timeUtils';
 import Header from '../components/Header';
 
 type RootStackParamList = {
@@ -30,6 +31,24 @@ const initials = (name: string) =>
     .map((n) => n[0]?.toUpperCase())
     .slice(0, 2)
     .join('') || '';
+
+function scorePillColors(v?: number) {
+  if (typeof v !== 'number') {
+    return { bg: colours.bg.subtle, border: colours.border.default, text: colours.text.primary };
+  }
+  
+  const tone = scoreToTone(v);
+  const borderColor = toneToColor(tone);
+  
+  if (tone === 'good') {
+    return { bg: colours.brand.accent, border: borderColor, text: colours.brand.primary };
+  }
+  if (tone === 'warn') {
+    return { bg: colours.status.warningBg, border: colours.status.warningBorder, text: colours.status.warningText };
+  }
+  // alert
+  return { bg: colours.status.dangerBg, border: colours.status.dangerBorder, text: colours.status.dangerText };
+}
 
 export default function EmployeeScreenWeb() {
   const route = useRoute<EmployeeRoute>();
@@ -123,23 +142,31 @@ export default function EmployeeScreenWeb() {
               {/* Identity Card */}
               <View style={styles.card}>
             <View style={styles.employeeHeader}>
-              {employee.imageUrl ? (
-                <Image source={{ uri: employee.imageUrl }} style={styles.avatar} />
-              ) : (
-                <View style={styles.avatarFallback}>
-                  <Text style={styles.avatarText}>{initials(employee.name)}</Text>
-                </View>
-              )}
-              <View style={styles.employeeInfo}>
-                <Text style={styles.name}>{employee.name}</Text>
-                {employee.role && <Text style={styles.role}>{employee.role}</Text>}
-                <View style={styles.scoreSection}>
-                  <Text style={styles.scoreLabel}>Overall Score</Text>
-                  <View style={styles.scoreBadge}>
-                    <Text style={styles.scoreValue}>
-                      {typeof employee.score === 'number' ? Math.round(employee.score) : '--'}
-                    </Text>
+              <View style={styles.employeeMainInfo}>
+                {employee.imageUrl ? (
+                  <Image source={{ uri: employee.imageUrl }} style={styles.avatar} />
+                ) : (
+                  <View style={styles.avatarFallback}>
+                    <Text style={styles.avatarText}>{initials(employee.name)}</Text>
                   </View>
+                )}
+                <View style={styles.employeeInfo}>
+                  <Text style={styles.name}>{employee.name}</Text>
+                  {employee.role && <Text style={styles.role}>{employee.role}</Text>}
+                </View>
+              </View>
+              <View style={styles.scoreSection}>
+                <Text style={styles.scoreLabel}>Overall Score</Text>
+                <View style={[
+                  styles.scoreBadge,
+                  {
+                    backgroundColor: scorePillColors(employee.score).bg,
+                    borderColor: scorePillColors(employee.score).border
+                  }
+                ]}>
+                  <Text style={[styles.scoreValue, { color: scorePillColors(employee.score).text }]}>
+                    {typeof employee.score === 'number' ? Math.round(employee.score) : '--'}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -203,9 +230,9 @@ export default function EmployeeScreenWeb() {
                     <View style={styles.skillMeters}>
                       {skills.map(([label, val]) => {
                         const pct = Math.round(Number(val ?? 0));
-                        const color = pct >= 80 ? colours.status.success : 
-                                     pct >= 60 ? colours.status.warning : 
-                                     colours.status.danger;
+                        // Use centralized scoreToTone function for consistency
+                        const tone = scoreToTone(pct);
+                        const color = toneToColor(tone);
                         return (
                           <View key={label} style={styles.meterRow}>
                             <Text style={styles.meterLabel}>{label}</Text>
@@ -395,6 +422,12 @@ const styles = StyleSheet.create({
   employeeHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 20,
+  },
+  employeeMainInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     gap: 20,
   },
   avatar: {
@@ -444,15 +477,17 @@ const styles = StyleSheet.create({
     color: colours.text.muted,
   },
   scoreBadge: {
-    backgroundColor: colours.brand.primary,
+    minWidth: 48,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scoreValue: {
-    color: colours.bg.canvas,
     fontWeight: '700',
-    fontSize: 16,
+    fontSize: 14,
   },
 
   // Skill Highlights

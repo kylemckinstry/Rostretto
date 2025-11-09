@@ -13,7 +13,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import SearchIcon from '../assets/search.svg';
 import { useEmployeesUI } from '../viewmodels/employees';
-import { colours } from '../theme/colours';
+import { colours, toneToColor } from '../theme/colours';
+import { scoreToTone } from '../helpers/timeUtils';
 
 // Types from store (UI-facing version)
 export type Role = 'Coffee' | 'Sandwich' | 'Cashier' | 'Closer';
@@ -51,19 +52,28 @@ const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
 const normalizePercent = (n?: number) => (typeof n === 'number' ? clamp01(n / 100) : 0);
 
 function barColor(pct: number) {
-  if (pct >= 0.8) return colours.brand.primary;
-  if (pct >= 0.6) return colours.status.success;
-  if (pct >= 0.4) return colours.status.warning;
-  return colours.status.danger;
+  // Use centralized scoreToTone for consistency (pct is 0-1, convert to 0-100)
+  const tone = scoreToTone(pct * 100);
+  return toneToColor(tone);
 }
 
 function scorePillColors(v?: number) {
   if (typeof v !== 'number') {
     return { bg: colours.bg.subtle, border: colours.border.default, text: colours.text.primary };
   }
-  if (v >= 80) return { bg: colours.brand.accent, border: colours.border.default, text: colours.brand.primary };
-  if (v >= 60) return { bg: '#FFF7E8', border: '#FAD7A0', text: '#B45309' };
-  return { bg: '#FDECEC', border: '#F5B4B4', text: '#B91C1C' };
+  
+  // Use centralized scoreToTone function for consistency
+  const tone = scoreToTone(v);
+  const borderColor = toneToColor(tone);
+  
+  if (tone === 'good') {
+    return { bg: colours.brand.accent, border: borderColor, text: colours.brand.primary };
+  }
+  if (tone === 'warn') {
+    return { bg: colours.status.warningBg, border: colours.status.warningBorder, text: colours.status.warningText };
+  }
+  // alert
+  return { bg: colours.status.dangerBg, border: colours.status.dangerBorder, text: colours.status.dangerText };
 }
 
 // Search parsing

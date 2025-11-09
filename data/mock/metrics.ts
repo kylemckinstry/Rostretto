@@ -1,4 +1,4 @@
-export type MetricKind = 'alert' | 'success' | 'neutral' | 'chart';
+export type MetricKind = 'alert' | 'success' | 'warning' | 'neutral' | 'chart';
 
 export type MetricCard = {
   kind: MetricKind;

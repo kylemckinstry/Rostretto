@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colours } from '../../theme/colours';
+import { colours, toneToColor } from '../../theme/colours';
+import { scoreToTone } from '../../helpers/timeUtils';
 
 type ShiftData = {
   monday: number;
@@ -85,11 +86,10 @@ export default function ShiftBreakdown({ data, maxHeight = 280 }: ShiftBreakdown
                 const value = shiftData[key];
                 const heightPercent = maxShifts > 0 ? (value / maxShifts) * 100 : 0;
                 
-                // Color based on percentage similar to Skill Details
+                // Use centralized scoreToTone for consistency
                 const pct = maxShifts > 0 ? (value / maxShifts) * 100 : 0;
-                const barColor = pct >= 80 ? colours.status.success : 
-                                 pct >= 60 ? colours.status.warning : 
-                                 colours.status.warning;
+                const tone = scoreToTone(pct);
+                const barColor = toneToColor(tone);
 
                 return (
                   <View key={key} style={styles.barColumn}>

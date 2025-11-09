@@ -55,5 +55,5 @@ const INITIAL: MockEmployee[] = [
   mkEmp('4', 4, 'Jason', 'Yay', 'SANDWICH', 0.91, 'red', { coffee: 0.63, sandwich: 0.88, customerService: 0.56, speed: 0.84, availability: 0.65, teamwork: 0.52 }),
 ];
 
-// The only thing your hook needs
+// Exported mock employee data
 export const MOCK_EMPLOYEES = INITIAL;

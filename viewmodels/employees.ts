@@ -68,17 +68,60 @@ function toUIEmployeeFromLegacy(e: any): UIEmployee {
 }
 
 // Converts normalised employee data to UI format
-function toUIEmployeeFromUnified(e: Employee): UIEmployee {
-  const score = e.metrics?.score; // already 0..100 in the unified model
+function toUIEmployeeFromUnified(e: Employee & { _raw?: any }): UIEmployee {
+  const score = e.metrics?.score ?? 0; // already 0..100 in the unified model
   const name = e.name?.trim() || 'Unnamed';
+  
+  console.log('[toUIEmployeeFromUnified]', name, 'score from metrics:', score, 'raw:', e._raw);
+  
+  // If we have raw API data, use it for detailed fields
+  const raw = e._raw;
+  if (raw) {
+    console.log('[toUIEmployeeFromUnified] Using raw data for', name, 'score:', score);
+    
+    // Skills from API are already in 0-100 range
+    const skills: UIEmployee['skills'] = {
+      Coffee: Math.round(raw.skillCoffee ?? 0),
+      Sandwich: Math.round(raw.skillSandwich ?? 0),
+      'Customer Service': Math.round(raw.customerService ?? 0),
+      Speed: Math.round(raw.speed ?? 0),
+    };
+    
+    const uiEmployee = {
+      id: e.id,
+      employee_id: raw.employeeId,
+      first_name: raw.firstName,
+      last_name: raw.lastName,
+      name,
+      primary_role: raw.primaryRole || e.roles?.[0] || 'BARISTA',
+      role: raw.primaryRole || e.roles?.[0] || 'BARISTA',
+      skill_coffee: raw.skillCoffee ?? 0,
+      skill_sandwich: raw.skillSandwich ?? 0,
+      customer_service_rating: raw.customerService ?? 0,
+      skill_speed: raw.speed ?? 0,
+      availability: 0.8,
+      teamwork: 0.8,
+      score, // Already 0-100 from metrics
+      fairnessColor: e.flags?.fairness,
+      imageUrl: undefined,
+      skills,
+      skillSummary: undefined,
+    };
+    
+    console.log('[toUIEmployeeFromUnified] Created UI employee:', uiEmployee);
+    return uiEmployee;
+  }
+  
+  // Fallback for data without raw API info
+  const primaryRole = (e.roles?.[0] || 'BARISTA') as any;
   return {
     id: e.id,
-    employee_id: 0, // Default value, update when schema includes it
-    first_name: '', // Default value, update when schema includes it
-    last_name: '', // Default value, update when schema includes it
+    employee_id: 0,
+    first_name: '',
+    last_name: '',
     name,
-    primary_role: 'BARISTA', // Default value, update when schema includes it
-    role: 'BARISTA', // UI-friendly role display
+    primary_role: primaryRole,
+    role: primaryRole,
     skill_coffee: 0,
     skill_sandwich: 0,
     customer_service_rating: 0,
@@ -88,7 +131,7 @@ function toUIEmployeeFromUnified(e: Employee): UIEmployee {
     score,
     fairnessColor: e.flags?.fairness,
     imageUrl: undefined,
-    skills: {}, // Skills can be added when schema supports them
+    skills: {},
     skillSummary: undefined,
   };
 }
@@ -99,6 +142,8 @@ function toUIEmployeeFromUnified(e: Employee): UIEmployee {
 export function useEmployeesUI(): UIEmployee[] {
   const extra = (Constants.expoConfig?.extra || {}) as { useMockData?: boolean };
   const usingMock = !!extra.useMockData;
+  
+  console.log('[useEmployeesUI] useMockData:', usingMock);
 
   if (usingMock) {
     // Mock data with detailed skills
@@ -110,10 +155,13 @@ export function useEmployeesUI(): UIEmployee[] {
 
   // Database data via normalised hook
   const raw = useEmployees();
-  return React.useMemo(
+  console.log('[useEmployeesUI] Raw employees from useEmployees:', raw);
+  const mapped = React.useMemo(
     () => raw.map(toUIEmployeeFromUnified),
     [raw]
   );
+  console.log('[useEmployeesUI] Mapped UI employees:', mapped);
+  return mapped;
 }
 
 // Synchronous helpers for mock data access
