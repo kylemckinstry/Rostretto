@@ -67,6 +67,9 @@ export default function FeedbackModal({
   };
 
   const firstName = employeeName.split(' ')[0];
+  const skillText = skill.toLowerCase() === 'coffee' || skill.toLowerCase() === 'sandwich'
+    ? `${skill.toLowerCase()} making`
+    : skill.toLowerCase();
 
   return (
     <Modal
@@ -94,7 +97,7 @@ export default function FeedbackModal({
 
           {/* Question */}
           <Text style={styles.question}>
-            How was {firstName}'s {skill.toLowerCase()} today?
+            How was {firstName}'s {skillText} today?
           </Text>
 
           {/* Rating Buttons */}

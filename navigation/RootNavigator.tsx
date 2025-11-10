@@ -66,7 +66,17 @@ function Tabs() {
       })}
     >
       <Tab.Screen name="Roster" component={SchedulerScreen} />
-      <Tab.Screen name="Team" component={CapabilitiesNavigator} />
+      <Tab.Screen 
+        name="Team" 
+        component={CapabilitiesNavigator}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            // Always navigate to CapabilitiesMain when Team tab is pressed
+            e.preventDefault();
+            navigation.navigate('Team', { screen: 'CapabilitiesMain' });
+          },
+        })}
+      />
       <Tab.Screen name="Fairness" component={FairnessScreen} />
     </Tab.Navigator>
   );
@@ -91,8 +101,6 @@ export default function RootNavigator() {
             headerShadowVisible: false,
           }}
         />
-        <Stack.Screen name="Employee" component={EmployeeScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Feedback" component={FeedbackScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

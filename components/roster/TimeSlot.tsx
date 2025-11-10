@@ -29,10 +29,29 @@ type Props = {
 };
 
 export default function TimeSlot({ slot, onAddStaff, onRemoveStaff }: Props) {
-  const hasMismatches = slot.mismatches > 0;
+  // Calculate the average tone of assigned staff (matches web version logic)
+  const averageTone = React.useMemo(() => {
+    if (slot.assignedStaff.length === 0) {
+      return 'alert'; // No employees = bad (red)
+    }
 
-  const indicatorStyle = hasMismatches ? s.alertIndicator : s.goodIndicator;
-  const indicatorSymbol = hasMismatches ? '!' : '✓';
+    // Count tones: good = 2, warn = 1, alert = 0
+    const toneValues = { good: 2, warn: 1, alert: 0 };
+    const sum = slot.assignedStaff.reduce((acc, staff) => {
+      return acc + (toneValues[staff.tone] ?? 0);
+    }, 0);
+    const average = sum / slot.assignedStaff.length;
+
+    // Determine majority: >= 1.5 = good, >= 0.5 = warn, < 0.5 = alert
+    if (average >= 1.5) return 'good';
+    if (average >= 0.5) return 'warn';
+    return 'alert';
+  }, [slot.assignedStaff]);
+
+  const indicatorColor = toneToColor(averageTone);
+  const indicatorBg = averageTone === 'good' ? indicatorColor : colours.bg.canvas;
+  const indicatorSymbol = averageTone === 'good' ? '✓' : averageTone === 'warn' ? '!' : '!';
+  const textColor = averageTone === 'good' ? colours.bg.canvas : indicatorColor;
 
   return (
     <View style={s.wrap}>
@@ -41,8 +60,8 @@ export default function TimeSlot({ slot, onAddStaff, onRemoveStaff }: Props) {
         <Text style={s.timeText}>
           {slot.startTime} - {slot.endTime}
         </Text>
-        <View style={[s.indicator, indicatorStyle]}>
-          <Text style={[s.indicatorText, { color: hasMismatches ? colours.status.danger : colours.bg.canvas }]}>
+        <View style={[s.indicator, { borderColor: indicatorColor, backgroundColor: indicatorBg }]}>
+          <Text style={[s.indicatorText, { color: textColor }]}>
             {indicatorSymbol}
           </Text>
         </View>
@@ -109,14 +128,8 @@ const s = StyleSheet.create({
     borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colours.bg.canvas,
     borderWidth: 1.5,
   },
-  goodIndicator: {
-    borderColor: colours.status.success,
-    backgroundColor: colours.status.success,
-  },
-  alertIndicator: { borderColor: colours.status.danger },
   indicatorText: {
     fontSize: 12,
     fontWeight: 'bold',

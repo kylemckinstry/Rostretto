@@ -28,6 +28,7 @@ type Props = {
   slotStart: string;
   slotEnd: string;
   onAssign: (opts: { employee: UIEmployee; start: string; end: string; role?: string }) => void;
+  isEmployeeAssigned?: (employeeName: string, start: string, end: string) => boolean;
 };
 
 export default function AvailableEmployeesModal({
@@ -36,6 +37,7 @@ export default function AvailableEmployeesModal({
   slotStart,
   slotEnd,
   onAssign,
+  isEmployeeAssigned,
 }: Props) {
   const employees = useEmployeesUI(); // UIEmployee[]
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
@@ -84,26 +86,67 @@ export default function AvailableEmployeesModal({
             const times = byIdTimes[item.id] ?? { start: slotStart, end: slotEnd, role: 'Mixed' };
             const isOpen = expandedId === item.id;
 
+            // Check if employee is already assigned to the selected slot's time range
+            const isAssignedToSelectedSlot = isEmployeeAssigned 
+              ? isEmployeeAssigned(name, slotStart, slotEnd)
+              : false;
+            
+            // Only check overlap when expanded to show proper button state
+            const hasOverlap = isOpen && isEmployeeAssigned 
+              ? isEmployeeAssigned(name, times.start, times.end)
+              : false;
+
             const toggle = () => {
+              // Don't allow expanding if already assigned to the selected slot
+              if (isAssignedToSelectedSlot) return;
+              
               ensureTimes(item.id);
               LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
               setExpandedId((e) => (e === item.id ? null : item.id));
             };
 
             return (
-              <Pressable onPress={toggle} style={[s.card, isOpen && s.cardExpanded]} accessibilityRole="button">
+              <Pressable 
+                onPress={toggle} 
+                style={[
+                  s.card, 
+                  isOpen && s.cardExpanded,
+                  isAssignedToSelectedSlot && s.cardDisabled
+                ]} 
+                accessibilityRole="button"
+                disabled={isAssignedToSelectedSlot}
+              >
                 <View style={s.row}>
                   <View style={s.left}>
-                    <View style={[s.initial, { borderColor: border }]}>
-                      <Text style={[s.initialText, { color: border }]}>
+                    <View style={[
+                      s.initial, 
+                      { borderColor: border },
+                      isAssignedToSelectedSlot && s.initialDisabled
+                    ]}>
+                      <Text style={[
+                        s.initialText, 
+                        { color: border },
+                        isAssignedToSelectedSlot && s.textDisabled
+                      ]}>
                         {name.charAt(0).toUpperCase()}
                       </Text>
                     </View>
-                    <Text style={s.name}>{name}</Text>
+                    <Text style={[
+                      s.name,
+                      isAssignedToSelectedSlot && s.textDisabled
+                    ]}>{name}</Text>
                   </View>
                   <View style={s.right}>
-                    <View style={[s.scoreBox, { borderColor: border }]}>
-                      <Text style={[s.scoreText, { color: border }]}>{score}</Text>
+                    <View style={[
+                      s.scoreBox, 
+                      { borderColor: border },
+                      isAssignedToSelectedSlot && s.scoreBoxDisabled
+                    ]}>
+                      <Text style={[
+                        s.scoreText, 
+                        { color: border },
+                        isAssignedToSelectedSlot && s.textDisabled
+                      ]}>{score}</Text>
                     </View>
                   </View>
                 </View>
@@ -170,9 +213,12 @@ export default function AvailableEmployeesModal({
                             role: times.role,
                           })
                         }
-                        style={s.assignBtn}
+                        style={[s.assignBtn, hasOverlap && s.assignBtnDisabled]}
+                        disabled={hasOverlap}
                       >
-                        <Text style={s.assignBtnText}>Assign Shift</Text>
+                        <Text style={[s.assignBtnText, hasOverlap && s.assignBtnTextDisabled]}>
+                          {hasOverlap ? 'Already Assigned' : 'Assign Shift'}
+                        </Text>
                       </Pressable>
                     </View>
                   </>
@@ -262,6 +308,31 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   assignBtnText: { color: '#FFFFFF', fontWeight: '800', fontSize: 17 },
+  assignBtnDisabled: {
+    backgroundColor: colours.bg.subtle,
+    borderWidth: 1,
+    borderColor: colours.border.default,
+  },
+  assignBtnTextDisabled: {
+    color: colours.text.muted,
+  },
+
+  // Disabled state styles when employee is already assigned to the selected slot
+  cardDisabled: {
+    opacity: 0.5,
+    backgroundColor: colours.bg.subtle,
+  },
+  initialDisabled: {
+    borderColor: colours.border.default,
+    backgroundColor: colours.bg.subtle,
+  },
+  textDisabled: {
+    color: colours.text.muted,
+  },
+  scoreBoxDisabled: {
+    borderColor: colours.border.default,
+    backgroundColor: colours.bg.subtle,
+  },
 
   // Close button styles (matching web version)
   closeButton: {

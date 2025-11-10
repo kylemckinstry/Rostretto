@@ -2,7 +2,7 @@
  * Example usage of FeedbackModal
  * 
  * This file demonstrates how to integrate the feedback modal into your screens.
- * You can trigger the modal after shifts, on a schedule, or manually.
+ * The modal can be triggered after shifts, on a schedule, or manually.
  */
 
 import * as React from 'react';
@@ -21,6 +21,8 @@ export function ExampleFeedbackUsage() {
   const handleFeedbackSubmit = (rating: 1 | 2 | 3 | 4 | 5) => {
     // Store the feedback
     storeFeedback(
+      'mgr001', // managerId
+      'Current Manager', // managerName (should be from logged-in user)
       'emp123', // employeeId
       'Max Hayes', // employeeName
       'Coffee', // skill
@@ -74,7 +76,14 @@ export function useFeedbackQueue() {
   const handleSubmit = (rating: 1 | 2 | 3 | 4 | 5) => {
     const current = queue[currentIndex];
     if (current) {
-      storeFeedback(current.employeeId, current.employeeName, current.skill, rating);
+      storeFeedback(
+        'mgr001', // managerId (should be from logged-in user)
+        'Current Manager', // managerName (should be from logged-in user)
+        current.employeeId,
+        current.employeeName,
+        current.skill,
+        rating
+      );
       
       // Move to next employee or close
       if (currentIndex < queue.length - 1) {

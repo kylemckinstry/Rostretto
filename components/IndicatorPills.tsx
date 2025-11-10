@@ -2,7 +2,7 @@ import * as React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { colours } from '../theme/colours';
 
-type Tone = 'good' | 'warn' | 'alert';
+type Tone = 'good' | 'warn' | 'alert' | 'neutral';
 type IconComp = React.ComponentType<{ width?: number; height?: number; color?: string }>;
 
 export type Item = {
@@ -15,10 +15,11 @@ export type Item = {
   iconColor?: string;
 };
 
-const TONE: Record<Tone, { fg: string }> = {
+const TONE: Record<Tone, { fg: string; border?: string }> = {
   good: { fg: colours.status.success },
   warn: { fg: colours.status.warning },
   alert: { fg: colours.status.danger },
+  neutral: { fg: colours.text.secondary, border: '#D1D5DB' }, // Lighter grey border to match chevrons
 };
 
 export default function IndicatorPills({ items }: { items: Item[] }) {
@@ -26,12 +27,13 @@ export default function IndicatorPills({ items }: { items: Item[] }) {
     <View style={s.row}>
       {items.map((it, idx) => {
         const c = TONE[it.tone].fg;
+        const borderColor = TONE[it.tone].border ?? c; // Use custom border or default to fg color
         const variant = it.variant ?? 'text';
 
         return (
           <View
             key={`${it.label}-${idx}`}
-            style={[s.pill, { borderColor: c }]}
+            style={[s.pill, { borderColor }]}
           >
             {/* Number in a circle (or tick mark) */}
             {variant === 'value' && (

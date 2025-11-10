@@ -1100,7 +1100,10 @@ export default function SchedulerScreenWeb() {
                 <View style={styles.rightSection}>
                   <Pressable 
                     style={styles.notificationButton}
-                    onPress={() => navigation.navigate('Feedback' as never)}
+                    onPress={() => (navigation as any).navigate('Root', {
+                      screen: 'Team',
+                      params: { screen: 'Feedback' }
+                    })}
                     accessibilityLabel="View pending feedback"
                     accessibilityRole="button"
                   >

@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { SafeAreaView, View, Text, StyleSheet, Pressable } from 'react-native';
 import Header from '../components/Header';
-import { ArrowUpRight } from 'lucide-react-native'; // optional
+import { ArrowUpRight } from 'lucide-react-native';
 import { colours } from '../theme/colours';
 
 export default function FairnessScreen() {
@@ -13,6 +13,7 @@ export default function FairnessScreen() {
   return (
     <SafeAreaView style={s.safe}>
       <Header
+        showNotification={false}
         title={
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
             <Text style={s.future}>Future Implementation:</Text>

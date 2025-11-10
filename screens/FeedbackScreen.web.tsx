@@ -214,6 +214,9 @@ function FeedbackRequestCard({
 }) {
   const employeeFirstName = request.employeeName.split(' ')[0];
   const today = new Date().toISOString().split('T')[0];
+  const skillText = request.skill.toLowerCase() === 'coffee' || request.skill.toLowerCase() === 'sandwich'
+    ? `${request.skill.toLowerCase()} making`
+    : request.skill.toLowerCase();
 
   return (
     <Pressable 
@@ -229,7 +232,7 @@ function FeedbackRequestCard({
           <Text style={styles.skillLabel}>{request.skill}</Text>
           <Text style={styles.separator}>|</Text>
           <Text style={styles.questionPreview}>
-            How was {employeeFirstName}'s {request.skill.toLowerCase()}?
+            How was {employeeFirstName}'s {skillText}?
           </Text>
         </View>
         <Text style={styles.dateText}>{today}</Text>
@@ -248,6 +251,9 @@ function CompletedFeedbackCard({
   entry: FeedbackEntry;
 }) {
   const employeeFirstName = entry.employeeName.split(' ')[0];
+  const skillText = entry.skill.toLowerCase() === 'coffee' || entry.skill.toLowerCase() === 'sandwich'
+    ? `${entry.skill.toLowerCase()} making`
+    : entry.skill.toLowerCase();
   const getRatingColor = (rating: FeedbackRating): string => {
     if (rating <= 2) return colours.status.danger;
     if (rating === 3) return colours.status.warning;
@@ -263,7 +269,7 @@ function CompletedFeedbackCard({
           <Text style={styles.skillLabel}>{entry.skill}</Text>
           <Text style={styles.separator}>|</Text>
           <Text style={styles.questionPreview}>
-            How was {employeeFirstName}'s {entry.skill.toLowerCase()}?
+            How was {employeeFirstName}'s {skillText}?
           </Text>
         </View>
         <Text style={styles.dateText}>{entry.date}</Text>
@@ -306,7 +312,7 @@ const styles = StyleSheet.create({
   pageTitle: { 
     fontSize: 28, 
     fontWeight: '700', 
-    color: colours.text.primary, 
+    color: colours.brand.primary,
     marginBottom: 0,
   },
   pageTitleCompact: {
