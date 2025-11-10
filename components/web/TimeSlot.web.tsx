@@ -27,8 +27,6 @@ type Props = {
 };
 
 export default function TimeSlotWeb({ slot, onAddStaff, onRemoveStaff, isSelected = false }: Props) {
-  const hasMismatches = slot.mismatches > 0;
-
   // Calculate the average tone of assigned staff
   const averageTone = React.useMemo(() => {
     if (slot.assignedStaff.length === 0) {

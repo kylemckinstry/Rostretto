@@ -2,6 +2,7 @@
 import * as React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { colours, toneToColor, type Tone } from '../../theme/colours';
+import { roleToDisplayName } from '../../helpers/timeUtils';
 
 export type StaffAssignment = {
   name: string;
@@ -75,7 +76,7 @@ export default function TimeSlot({ slot, onAddStaff, onRemoveStaff }: Props) {
             style={[s.staffRow, { borderColor: toneToColor(staff.tone) }]}
           >
             <Text style={s.staffName}>{staff.name}</Text>
-            <Text style={s.staffRole}>{staff.role}</Text>
+            <Text style={s.staffRole}>{roleToDisplayName(staff.role)}</Text>
             <Pressable
               hitSlop={8}
               accessibilityRole="button"
