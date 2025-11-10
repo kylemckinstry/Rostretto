@@ -62,6 +62,9 @@ export default function SchedulerScreen() {
   const [weekBundle, setWeekBundle] = React.useState<WeekBundle | null>(null);
   const [weekDaysLive, setWeekDaysLive] = React.useState<Array<{ date: Date; mismatches: number; demand: 'Coffee' | 'Sandwich' | 'Mixed'; traffic: 'Low' | 'Medium' | 'High' }> | null>(null);
   const [prevWeekDays, setPrevWeekDays] = React.useState<Array<{ date: Date; mismatches: number; demand: 'Coffee' | 'Sandwich' | 'Mixed'; traffic: 'Low' | 'Medium' | 'High' }> | null>(null);
+  
+  // Cache initial demand/traffic indicators (these should never change after initial load)
+  const [initialIndicators, setInitialIndicators] = React.useState<Map<string, { demand: 'Coffee' | 'Sandwich' | 'Mixed'; traffic: 'Low' | 'Medium' | 'High' }>>(new Map());
 
   // Time slot management for day view
   const [slots, setSlots] = React.useState<TimeSlotData[]>(() => generateTimeSlots());
@@ -141,11 +144,23 @@ export default function SchedulerScreen() {
           const localInd = localIndicators[key];
           const backendInd = backendIndicatorsByDate.get(key);
           
+          // Cache initial demand/traffic on first load (these are deterministic forecasts)
+          if (!initialIndicators.has(key) && backendInd) {
+            const demand = (demandMapping[backendInd.demand as keyof typeof demandMapping] || 'Mixed') as 'Coffee' | 'Sandwich' | 'Mixed';
+            const traffic = (trafficMapping[backendInd.traffic ?? 'medium']) as 'Low' | 'Medium' | 'High';
+            setInitialIndicators(prev => new Map(prev).set(key, { demand, traffic }));
+          }
+          
+          // Always use cached initial indicators for demand/traffic (never let them change)
+          const cached = initialIndicators.get(key);
+          const demand = cached?.demand ?? (demandMapping[backendInd?.demand as keyof typeof demandMapping] || 'Mixed') as 'Coffee' | 'Sandwich' | 'Mixed';
+          const traffic = cached?.traffic ?? (trafficMapping[backendInd?.traffic ?? 'medium']) as 'Low' | 'Medium' | 'High';
+          
           return {
             date: d,
             mismatches: localInd?.mismatches ?? 0,
-            demand: (demandMapping[backendInd?.demand as keyof typeof demandMapping] || 'Mixed') as 'Coffee' | 'Sandwich' | 'Mixed',
-            traffic: (trafficMapping[backendInd?.traffic ?? 'medium']) as 'Low' | 'Medium' | 'High',
+            demand,
+            traffic,
           };
         });
         setWeekDaysLive(tiles);
