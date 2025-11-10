@@ -17,7 +17,7 @@ import { colours, toneToColor } from '../theme/colours';
 import { scoreToTone } from '../helpers/timeUtils';
 
 // Types from store (UI-facing version)
-export type Role = 'Coffee' | 'Sandwich' | 'Cashier' | 'Closer';
+export type Role = 'Coffee' | 'Sandwich' | 'Customer Service' | 'Speed';
 
 export type Employee = {
   id: string;
@@ -29,14 +29,14 @@ export type Employee = {
 };
 
 // Roles can be exported elsewhere for reuse
-const KNOWN_SKILLS: Array<Role | string> = ['Coffee', 'Sandwich', 'Cashier', 'Closer'];
+const KNOWN_SKILLS: Array<Role | string> = ['Coffee', 'Sandwich', 'Customer Service', 'Speed'];
 
 // Consistent colours per skill
 const SKILL_COLOURS: Record<string, string> = {
   Coffee: colours.brand.primary,
   Sandwich: colours.status.success,
-  Cashier: colours.status.warning,
-  Closer: colours.text.primary,
+  'Customer Service': colours.status.warning,
+  Speed: colours.text.primary,
 };
 
 // Helpers
@@ -110,7 +110,10 @@ function passesSkillCmp(v: number, cmp: Comparator, target: number) {
 function SkillBar({ label, value }: { label: string; value: number }) {
   const pct = normalizePercent(value);
   const width = `${Math.round(pct * 100)}%`;
-  const tint = SKILL_COLOURS[label] ?? barColor(pct);
+  const rawValue = value ?? 0;
+  // Use centralized scoreToTone function for consistent color mapping
+  const tone = scoreToTone(rawValue);
+  const tint = toneToColor(tone);
   const fillStyle: any = { width, backgroundColor: tint };
   return (
     <View style={s.skillRow}>
@@ -175,6 +178,9 @@ function EmployeeTile({ employee, onPress }: { employee: Employee; onPress: () =
                 <Text style={s.gapChipOutlineText}>{gap}</Text>
               </View>
             ))}
+            {KNOWN_SKILLS.filter((k) => (employee.skills?.[k] ?? 0) < 50).length === 0 && (
+              <Text style={s.noGapsText}>✓ No gaps identified</Text>
+            )}
           </View>
         </View>
       </View>
@@ -355,7 +361,13 @@ const s = StyleSheet.create({
     borderColor: colours.status.danger,
     backgroundColor: colours.bg.canvas,
   },
-  gapChipOutlineText: { color: colours.text.secondary, fontSize: 12, fontWeight: '600' },
+  gapChipOutlineText: { color: colours.status.danger, fontSize: 12, fontWeight: '600' },
+  noGapsText: { 
+    color: colours.status.success, 
+    fontSize: 12, 
+    fontWeight: '600',
+    fontStyle: 'italic',
+  },
 });
 
 

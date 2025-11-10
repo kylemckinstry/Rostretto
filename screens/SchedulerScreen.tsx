@@ -247,6 +247,44 @@ export default function SchedulerScreen() {
     }
   }, [anchorDate, weekBundle, weekDaysLive]);
 
+  // Reactively recalculate weekDaysLive when weekBundle changes
+  React.useEffect(() => {
+    if (!weekBundle || !USE_API) return;
+
+    const trafficMapping = { low: 'Low', medium: 'Medium', high: 'High' } as const;
+    const demandMapping = { Coffee: 'Coffee', Sandwiches: 'Sandwich', Sandwich: 'Sandwich', Mixed: 'Mixed' } as const;
+    
+    // Calculate mismatches locally, but use backend's demand and traffic
+    const localIndicators = buildWeekIndicators(weekBundle.shifts, weekBundle.assignments, weekBundle.employees);
+    
+    // Create a map of backend indicators by date for easy lookup
+    const backendIndicatorsByDate = new Map(
+      weekBundle.indicators.days.map(day => [day.date, day])
+    );
+    
+    const weekStart = startOfWeek(anchorDate);
+    const tiles = Array.from({ length: 7 }, (_, i) => {
+      const d = addDays(weekStart, i);
+      const key = mkKey(d);
+      
+      const localInd = localIndicators[key];
+      const backendInd = backendIndicatorsByDate.get(key);
+      
+      // Always use cached initial indicators for demand/traffic (never let them change)
+      const cached = initialIndicators.get(key);
+      const demand = cached?.demand ?? (demandMapping[backendInd?.demand as keyof typeof demandMapping] || 'Mixed') as 'Coffee' | 'Sandwich' | 'Mixed';
+      const traffic = cached?.traffic ?? (trafficMapping[backendInd?.traffic ?? 'medium']) as 'Low' | 'Medium' | 'High';
+      
+      return {
+        date: d,
+        mismatches: localInd?.mismatches ?? 0,
+        demand,
+        traffic,
+      };
+    });
+    setWeekDaysLive(tiles);
+  }, [weekBundle, anchorDate, initialIndicators]);
+
   // Auto Shift for entire week (called from week view button)
   async function runAutoScheduleWeek() {
     if (!USE_API) return;
@@ -806,18 +844,8 @@ export default function SchedulerScreen() {
     { label: 'Traffic', tone: prevTrafficTone, variant: 'icon', icon: TrafficIcon },
   ];
 
-  // Convert weekDaysLive to the format needed by WeekView (with lowercase traffic)
-  const weekIndicators: Record<string, DayIndicators> = {};
-  if (weekDaysLive) {
-    weekDaysLive.forEach(day => {
-      const key = mkKey(day.date);
-      weekIndicators[key] = {
-        mismatches: day.mismatches,
-        demand: day.demand,
-        traffic: day.traffic.toLowerCase() as 'low' | 'medium' | 'high'
-      };
-    });
-  }
+  // Use weekDaysLive directly (same format as web)
+  const weekDays = weekDaysLive ?? [];
 
   return (
     <View style={{ flex: 1 }}>
@@ -837,7 +865,7 @@ export default function SchedulerScreen() {
           <>
             <WeekView
               anchorDate={anchorDate}
-              weekIndicators={weekIndicators}
+              days={weekDays}
               onPrevWeek={() => setAnchorDate(d => addWeeks(d, -1))}
               onNextWeek={() => setAnchorDate(d => addWeeks(d, 1))}
               onSelectDay={openDay}

@@ -35,12 +35,12 @@ export default function IndicatorPills({ items }: { items: Item[] }) {
             key={`${it.label}-${idx}`}
             style={[s.pill, { borderColor }]}
           >
-            {/* Number in a circle (or tick mark) */}
+            {/* Number in a circle */}
             {variant === 'value' && (
               <>
                 <View style={[s.valueCircle, { backgroundColor: c }]}>
                   <Text style={s.valueCircleText}>
-                    {it.value === '0' ? '✓' : it.value}
+                    {it.value}
                   </Text>
                 </View>
                 <Text style={[s.label, { color: c, marginTop: 6 }]}>{it.label}</Text>

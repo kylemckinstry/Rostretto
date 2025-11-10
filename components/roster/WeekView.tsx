@@ -1,20 +1,27 @@
 import * as React from 'react';
 import { View, StyleSheet } from 'react-native';
 import PagerView from 'react-native-pager-view';
-import { DayIndicators } from '../../state/types';
 import { startOfWeek, addDays, addWeeks } from '../../utils/date';
 import DayTile from './DayTile';
+
+// Week forecast day type - matching web version
+export type WeekForecastDay = {
+  date: Date;
+  mismatches: number;
+  demand: 'Coffee' | 'Sandwich' | 'Mixed';
+  traffic: 'Low' | 'Medium' | 'High';
+};
 
 // Week view with horizontal paging between weeks
 export default function WeekView({
   anchorDate,
-  weekIndicators,
+  days,
   onPrevWeek,
   onNextWeek,
   onSelectDay,
 }: {
   anchorDate: Date;
-  weekIndicators: Record<string, DayIndicators>;
+  days: WeekForecastDay[];
   onPrevWeek: () => void;
   onNextWeek: () => void;
   onSelectDay: (d: Date) => void;
@@ -39,6 +46,14 @@ export default function WeekView({
     }
   };
 
+  // Helper to find day data by date
+  const mkKey = (d: Date) => d.toISOString().slice(0, 10);
+  const getDayData = (date: Date): WeekForecastDay => {
+    const key = mkKey(date);
+    const found = days.find(day => mkKey(day.date) === key);
+    return found || { date, mismatches: 0, demand: 'Mixed', traffic: 'Medium' };
+  };
+
   return (
     <View style={s.dayTileContainer}>
       <PagerView
@@ -51,9 +66,13 @@ export default function WeekView({
         {weeks.map((weekStart, pageIndex) => (
           <View key={pageIndex} style={s.pageStyle}>
             {Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)).map(d => {
-              const key = d.toISOString().slice(0, 10);
-              const ind = weekIndicators[key] || { mismatches: 0, demand: 'Mixed', traffic: 'medium' };
-              return <DayTile key={key} date={d} indicators={ind} onPress={onSelectDay} />;
+              const dayData = getDayData(d);
+              const indicators = {
+                mismatches: dayData.mismatches,
+                demand: dayData.demand,
+                traffic: dayData.traffic.toLowerCase() as 'low' | 'medium' | 'high'
+              };
+              return <DayTile key={mkKey(d)} date={d} indicators={indicators} onPress={onSelectDay} />;
             })}
           </View>
         ))}

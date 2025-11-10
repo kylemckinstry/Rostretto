@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Pressable, View, Text, StyleSheet } from 'react-native';
 import { DayIndicators } from '../../state/types';
 import { fmtDayLabel } from '../../utils/date';
+import { colours } from '../../theme/colours';
 
 // SVG icons for demand indicators
 import TrafficIcon from '../../assets/traffic.svg';
@@ -9,18 +10,18 @@ import CoffeeIcon from '../../assets/coffee.svg';
 import SandwichIcon from '../../assets/sandwich.svg';
 import MixedIcon from '../../assets/mixed.svg';
 
-// Traffic level colours (green=low, red=high)
+// Traffic level colours (green=low, orange=medium, red=high) - matching web version
 function trafficColor(traffic: DayIndicators['traffic']) {
-  if (traffic === 'high') return '#E57373'; // Red
-  if (traffic === 'medium') return '#F5A623'; // Yellow
-  return '#00B392'; // Green (low traffic)
+  if (traffic === 'high') return colours.status.danger;
+  if (traffic === 'medium') return colours.status.warning;
+  return colours.status.success; // Low traffic
 }
 
-// Mismatch colours: 1 or less green, 2 orange, 3 or more red
+// Mismatch colours: 0 green, 1-2 orange, 3+ red - matching web version
 function mismatchColor(mismatches: number) {
-  if (mismatches <= 1) return '#5CB85C'; 
-  if (mismatches === 2) return '#F5A623';
-  return '#E57373';
+  if (mismatches === 0) return colours.status.success;  // 0: green
+  if (mismatches <= 2) return colours.status.warning;   // 1-2: orange
+  return colours.status.danger;                          // 3+: red
 }
 
 export default function DayStackTile({
