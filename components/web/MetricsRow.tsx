@@ -124,7 +124,7 @@ function iconComponentFor(card: MetricCard) {
   if (card.title === 'Primary Demand' || card.title === 'Highest Demand' || card.title === 'Highest Average Demand') {
     const demand = card.value.toLowerCase();
     if (demand === 'coffee') return CoffeeIcon;
-    if (demand === 'sandwiches') return SandwichIcon;
+    if (demand === 'sandwich' || demand === 'sandwiches') return SandwichIcon;
     if (demand === 'mixed') return MixedIcon;
     return MixedIcon; // Default to mixed for unknown demands
   }
