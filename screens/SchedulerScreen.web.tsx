@@ -572,6 +572,31 @@ export default function SchedulerScreenWeb() {
     setSelectedSlot(null);
   };
 
+  const handleClearRoster = async () => {
+    if (!USE_API || !weekBundle) return;
+    
+    const dayKey = mkKey(anchorDate);
+    
+    try {
+      // Clear all assignments for the current day
+      await api.clearDay(weekId, dayKey);
+      console.log(`[handleClearRoster] Cleared all assignments for ${dayKey}`);
+      
+      // Refresh bundle to get updated state
+      const bundle = await fetchWeekBundle(weekId);
+      setWeekBundle(bundle);
+      recalculateIndicators(bundle);
+      
+      // Clear local time slots
+      setTimeSlots(generateTimeSlots(bundle.shifts.filter(s => s.date === dayKey)));
+      
+      alert('All staff removed from today\'s roster');
+    } catch (e) {
+      console.error('[handleClearRoster] Failed to clear roster:', e);
+      alert('Failed to clear roster. Please try again.');
+    }
+  };
+
   // Check if an employee is already assigned in the given time range
   const isEmployeeAssigned = (employeeName: string, start: string, end: string): boolean => {
     const startIndex = TIME_OPTIONS.findIndex(time => time === start);
@@ -1180,10 +1205,15 @@ export default function SchedulerScreenWeb() {
 
               {/* Daily schedule view with split layout */}
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Daily Schedule</Text>
                 <View style={[styles.splitContainer, isCompact && styles.splitContainerCompact]}>
                   {/* Left side: Time slots */}
                   <View style={[styles.timeSlotsColumn, isCompact && styles.timeSlotsColumnCompact, selectedSlot && styles.timeSlotsColumnWithOverlay]}>
+                    <View style={styles.dailyScheduleHeader}>
+                      <Text style={styles.timeSlotColumnTitle}>Daily Schedule</Text>
+                      <Pressable onPress={handleClearRoster} hitSlop={8}>
+                        <Text style={styles.clearRosterLink}>Clear roster</Text>
+                      </Pressable>
+                    </View>
                     <View style={[styles.timeSlotListContainer, selectedSlot && styles.contentAboveOverlay]}>
                       {/* Dark overlay when a time slot is selected - clickable to deselect */}
                       {selectedSlot && (
@@ -1503,6 +1533,27 @@ const styles = StyleSheet.create({
   contentAboveOverlay: {
     position: 'relative',
     zIndex: 20,
+  } as any,
+  dailyScheduleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+    flexWrap: 'nowrap',
+  },
+  timeSlotColumnTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colours.text.primary,
+    flex: 0,
+    whiteSpace: 'nowrap',
+  } as any,
+  clearRosterLink: {
+    color: colours.text.muted,
+    fontSize: 14,
+    cursor: 'pointer',
+    flex: 0,
+    whiteSpace: 'nowrap',
   } as any,
 });
 
