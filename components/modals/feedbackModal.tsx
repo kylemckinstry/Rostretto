@@ -53,11 +53,13 @@ export default function FeedbackModal({
 
   const handleRatingSelect = (rating: FeedbackRating) => {
     setSelectedRating(rating);
-    // Auto-submit after brief delay for visual feedback
-    setTimeout(() => {
-      onSubmit(rating);
+  };
+
+  const handleSubmit = () => {
+    if (selectedRating) {
+      onSubmit(selectedRating);
       setSelectedRating(null);
-    }, 200);
+    }
   };
 
   const getRatingColor = (rating: FeedbackRating): string => {
@@ -131,6 +133,23 @@ export default function FeedbackModal({
               </Pressable>
             ))}
           </View>
+
+          {/* Submit Button */}
+          <Pressable
+            style={[
+              styles.submitButton,
+              !selectedRating && styles.submitButtonDisabled
+            ]}
+            onPress={handleSubmit}
+            disabled={!selectedRating}
+          >
+            <Text style={[
+              styles.submitButtonText,
+              !selectedRating && styles.submitButtonTextDisabled
+            ]}>
+              Submit
+            </Text>
+          </Pressable>
         </Pressable>
       </Pressable>
     </Modal>
@@ -207,9 +226,34 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden', // Ensure content doesn't shift
   },
   ratingText: {
     fontSize: 18,
     fontWeight: '600',
+    textAlign: 'center',
+    includeFontPadding: false, // Remove extra padding on Android
+  },
+  submitButton: {
+    backgroundColor: colours.brand.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 10,
+    marginTop: 24,
+    width: '100%',
+    alignItems: 'center',
+  },
+  submitButtonDisabled: {
+    backgroundColor: colours.bg.subtle,
+    borderWidth: 1,
+    borderColor: colours.border.default,
+  },
+  submitButtonText: {
+    color: colours.bg.canvas,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  submitButtonTextDisabled: {
+    color: colours.text.muted,
   },
 });
