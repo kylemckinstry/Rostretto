@@ -963,12 +963,16 @@ export default function SchedulerScreenWeb() {
 
     // Placeholder for now; wire to availability once ready
     const availability = '—';
+    const weather = '—';
+    const localEvent = '—';
 
     return [
       { kind: mismatchKind, title: 'Skill Mismatches', value: String(mismatchesTotal) },
       { kind: 'neutral', title: 'Primary Demand', value: primaryDemand },
       { kind: trafficKind, title: 'Expected Traffic', value: expectedTraffic },
       { kind: 'chart', title: 'Availability', value: availability },
+      { kind: 'neutral', title: 'Weather', value: weather },
+      { kind: 'neutral', title: 'Local Event', value: localEvent },
     ];
   }, [weekDaysLive, anchorDate]);
 

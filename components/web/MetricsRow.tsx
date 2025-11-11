@@ -12,6 +12,8 @@ import TrafficIcon from '../../assets/traffic.svg';
 import TeamIcon from '../../assets/team.svg';
 import AvailabilityIcon from '../../assets/availability.svg';
 import StarIcon from '../../assets/star.svg';
+import WeatherIcon from '../../assets/weather.svg';
+import EventsIcon from '../../assets/events.svg';
 
 // Custom exclamation icon component for alert metrics
 const ExclamationIcon = ({ width = 18, height = 18, color = colours.status.danger }: { 
@@ -129,6 +131,16 @@ function iconComponentFor(card: MetricCard) {
     return MixedIcon; // Default to mixed for unknown demands
   }
   
+  // Weather icon
+  if (card.title === 'Weather') {
+    return WeatherIcon;
+  }
+  
+  // Local Event icon
+  if (card.title === 'Local Event') {
+    return EventsIcon;
+  }
+  
   // Fallback based on kind
   if (card.kind === 'alert') return ExclamationIcon;
   if (card.kind === 'chart') return AvailabilityIcon;
@@ -138,6 +150,11 @@ function iconComponentFor(card: MetricCard) {
 function colorFor(k: MetricCard['kind'], title?: string) {
   // Special case: Overstaffed Shifts should always be red
   if (title === 'Overstaffed Shifts') return colours.status.danger;
+  
+  // Neutral grey for Availability, Weather, and Local Event
+  if (title === 'Availability' || title === 'Weather' || title === 'Local Event') {
+    return colours.text.secondary;
+  }
   
   if (k === 'alert') return colours.status.danger;
   if (k === 'success') return colours.status.success;
