@@ -16,8 +16,10 @@ import { useEmployeesUI } from '../viewmodels/employees';
 import Radar from '../components/employees/Radar';
 import CollapsibleSection from '../components/employees/CollapsibleSection';
 import TrainingCard from '../components/employees/TrainingCard';
+import ShiftBreakdown from '../components/employees/ShiftBreakdown';
 import { ChevronLeft, X } from 'lucide-react-native';
-import { colours } from '../theme/colours';
+import { colours, toneToColor } from '../theme/colours';
+import { scoreToTone } from '../helpers/timeUtils';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -48,10 +50,10 @@ export default function EmployeeScreen() {
     [employees, employeeId]
   );
 
-  // Collapsible sections state (default closed)
-  const [open, setOpen] = React.useState({ skills: false, training: false });
+  // Collapsible sections state (skills and shifts open by default, training closed)
+  const [open, setOpen] = React.useState({ skills: true, shifts: true, training: false });
 
-  const toggle = (k: 'skills' | 'training') => {
+  const toggle = (k: 'skills' | 'shifts' | 'training') => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setOpen((s) => ({ ...s, [k]: !s[k] }));
   };
@@ -166,13 +168,16 @@ export default function EmployeeScreen() {
               <View style={{ gap: 12, marginTop: 4 }}>
                 {skills.map(([label, val]) => {
                   const pct = Math.round(Number(val ?? 0));
+                  // Use centralized scoreToTone function for consistency with web
+                  const tone = scoreToTone(pct);
+                  const color = toneToColor(tone);
                   return (
                     <View key={label} style={s.meterRow}>
                       <Text style={s.meterLabel}>{label}</Text>
                       <View style={s.meterTrack}>
-                        <View style={[s.meterFill, { width: `${pct}%` }]} />
+                        <View style={[s.meterFill, { width: `${pct}%`, backgroundColor: color }]} />
                       </View>
-                      <Text style={s.meterPct}>{pct}%</Text>
+                      <Text style={[s.meterPct, { color }]}>{pct}%</Text>
                     </View>
                   );
                 })}
@@ -181,6 +186,20 @@ export default function EmployeeScreen() {
           ) : (
             <Text style={s.subtle}>No skill data available.</Text>
           )}
+        </CollapsibleSection>
+
+        {/* Shift Breakdown This Month */}
+        <CollapsibleSection
+          title="Shift Breakdown This Month"
+          open={open.shifts}
+          onToggle={() => toggle('shifts')}
+        >
+          <ShiftBreakdown 
+            employeeId={employeeId}
+            minShifts={1}
+            maxShifts={7}
+            weekdayBias={0.6}
+          />
         </CollapsibleSection>
 
         {/* Suggested Training */}
@@ -309,10 +328,15 @@ const s = StyleSheet.create({
   meterFill: {
     height: 8,
     borderRadius: 8,
-    backgroundColor: colours.text.primary,
-    opacity: 0.8,
+    // backgroundColor set dynamically based on score
   },
-  meterPct: { width: 40, textAlign: 'right', fontSize: 12, color: colours.text.muted },
+  meterPct: { 
+    width: 40, 
+    textAlign: 'right', 
+    fontSize: 12, 
+    fontWeight: '600',
+    // color set dynamically based on score
+  },
   center: { alignItems: 'center', justifyContent: 'center' },
   subtle: { color: colours.text.muted, marginTop: 6 },
   footerSpace: { height: 0 },

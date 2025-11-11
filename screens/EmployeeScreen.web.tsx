@@ -257,20 +257,15 @@ export default function EmployeeScreenWeb() {
           {/* Shift Breakdown */}
           <View style={styles.shiftBreakdownSection}>
             <CollapsibleSection
-              title="Shift Breakdown"
+              title="Shift Breakdown This Month"
               open={open.shifts}
               onToggle={() => toggle('shifts')}
             >
-              <ShiftBreakdown
-                data={{
-                  monday: 3,
-                  tuesday: 5,
-                  wednesday: 4,
-                  thursday: 6,
-                  friday: 5,
-                  saturday: 2,
-                  sunday: 1,
-                }}
+              <ShiftBreakdown 
+                employeeId={employeeId}
+                minShifts={1}
+                maxShifts={7}
+                weekdayBias={0.6}
               />
             </CollapsibleSection>
           </View>

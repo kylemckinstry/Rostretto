@@ -14,9 +14,68 @@ type ShiftData = {
 };
 
 type ShiftBreakdownProps = {
-  data?: ShiftData;
+  employeeId?: string;  // If provided, generates data deterministically
+  data?: ShiftData;     // If provided, uses this data directly
   maxHeight?: number;
+  minShifts?: number;
+  maxShifts?: number;
+  weekdayBias?: number;
 };
+
+// Hash function to generate a seed from employee ID
+
+function hashCode(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash);
+}
+
+// Seeded random number generator (deterministic)
+
+function seededRandom(seed: number): () => number {
+  let currentSeed = seed;
+  return () => {
+    currentSeed = (currentSeed * 9301 + 49297) % 233280;
+    return currentSeed / 233280;
+  };
+}
+
+// Generates shift data for an employee based on their ID
+ 
+function generateShiftData(
+  employeeId: string,
+  minShifts: number = 1,
+  maxShifts: number = 7,
+  weekdayBias: number = 0.6
+): ShiftData {
+  const seed = hashCode(employeeId);
+  const random = seededRandom(seed);
+
+  // Generates base values
+  const generateShift = (isWeekday: boolean) => {
+    const baseRandom = random();
+    const biasedRandom = isWeekday 
+      ? baseRandom + (weekdayBias * (1 - baseRandom)) // Boost weekdays
+      : baseRandom * (1 - weekdayBias * 0.5); // Reduce weekends slightly
+    
+    const range = maxShifts - minShifts;
+    return Math.round(minShifts + (biasedRandom * range));
+  };
+
+  return {
+    monday: generateShift(true),
+    tuesday: generateShift(true),
+    wednesday: generateShift(true),
+    thursday: generateShift(true),
+    friday: generateShift(true),
+    saturday: generateShift(false),
+    sunday: generateShift(false),
+  };
+}
 
 const WEEKDAYS = [
   { key: 'monday', label: 'Mon' },
@@ -28,29 +87,45 @@ const WEEKDAYS = [
   { key: 'sunday', label: 'Sun' },
 ] as const;
 
-export default function ShiftBreakdown({ data, maxHeight = 280 }: ShiftBreakdownProps) {
-  // Default to zero shifts if no data provided
-  const shiftData: ShiftData = data || {
-    monday: 0,
-    tuesday: 0,
-    wednesday: 0,
-    thursday: 0,
-    friday: 0,
-    saturday: 0,
-    sunday: 0,
-  };
+export default function ShiftBreakdown({ 
+  employeeId,
+  data, 
+  maxHeight = 280,
+  minShifts = 1,
+  maxShifts = 7,
+  weekdayBias = 0.6,
+}: ShiftBreakdownProps) {
+  // Generates data from employeeId if provided, otherwise use provided data or defaults
+  const shiftData: ShiftData = React.useMemo(() => {
+    if (data) {
+      return data;
+    }
+    if (employeeId) {
+      return generateShiftData(employeeId, minShifts, maxShifts, weekdayBias);
+    }
+    // Default to zero shifts
+    return {
+      monday: 0,
+      tuesday: 0,
+      wednesday: 0,
+      thursday: 0,
+      friday: 0,
+      saturday: 0,
+      sunday: 0,
+    };
+  }, [employeeId, data, minShifts, maxShifts, weekdayBias]);
 
-  // Find max value and round up to nearest even number
+  // Finds max value and round up to nearest even number for chart scaling
   const maxDataValue = Math.max(...Object.values(shiftData), 1);
-  const maxShifts = maxDataValue % 2 === 0 ? maxDataValue : maxDataValue + 1;
+  const chartMaxShifts = maxDataValue % 2 === 0 ? maxDataValue : maxDataValue + 1;
   
-  // Generate Y-axis labels (increment by 2)
+  // Generates Y-axis labels (increment by 2)
   const yAxisLabels: number[] = [];
-  for (let i = maxShifts; i >= 0; i -= 2) {
+  for (let i = chartMaxShifts; i >= 0; i -= 2) {
     yAxisLabels.push(i);
   }
 
-  // Calculate chart dimensions
+  // Calculates chart dimensions
   const chartHeight = maxHeight - 60; // Reserve space for labels
 
   return (
@@ -84,10 +159,10 @@ export default function ShiftBreakdown({ data, maxHeight = 280 }: ShiftBreakdown
             <View style={styles.bars}>
               {WEEKDAYS.map(({ key, label }, idx) => {
                 const value = shiftData[key];
-                const heightPercent = maxShifts > 0 ? (value / maxShifts) * 100 : 0;
+                const heightPercent = chartMaxShifts > 0 ? (value / chartMaxShifts) * 100 : 0;
                 
                 // Use centralized scoreToTone for consistency
-                const pct = maxShifts > 0 ? (value / maxShifts) * 100 : 0;
+                const pct = chartMaxShifts > 0 ? (value / chartMaxShifts) * 100 : 0;
                 const tone = scoreToTone(pct);
                 const barColor = toneToColor(tone);
 
