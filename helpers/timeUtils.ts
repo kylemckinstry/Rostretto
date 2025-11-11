@@ -69,6 +69,7 @@ export function roleToDisplayName(role: string): string {
     'SANDWICH': 'Sandwich',
     'WAITER': 'Waiter',
     'MANAGER': 'Manager',
+    'TRAINING': 'Training',
     'MIXED': 'Mixed',
     'COFFEE': 'Coffee',
     // Capital case versions (pass through)
@@ -76,6 +77,7 @@ export function roleToDisplayName(role: string): string {
     'Sandwich': 'Sandwich',
     'Waiter': 'Waiter',
     'Manager': 'Manager',
+    'Training': 'Training',
     'Mixed': 'Mixed',
     'Coffee': 'Coffee',
   };
