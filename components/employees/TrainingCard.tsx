@@ -20,7 +20,7 @@ export default function TrainingCard({
       </View>
       <Text style={s.blurb}>{blurb}</Text>
       <Text style={s.meta}>⏱ Duration: {duration}</Text>
-      <Pressable style={s.btn}><Text style={s.btnText}>View Details</Text></Pressable>
+      <Pressable style={s.btn}><Text style={s.btnText}>Currently Unavailable</Text></Pressable>
     </View>
   );
 }

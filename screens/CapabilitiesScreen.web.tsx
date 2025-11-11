@@ -5,11 +5,13 @@ import Header from '../components/Header';
 import { colours, toneToColor } from '../theme/colours';
 import { useEmployeesUI } from '../viewmodels/employees';
 import Radar from '../components/employees/Radar';
+import TrainingCard from '../components/employees/TrainingCard';
 import MetricsRow from '../components/web/MetricsRow';
 import { type MetricCard } from '../data/mock/metrics';
 import SearchIcon from '../assets/search.svg';
 import NotificationIcon from '../assets/notification.svg';
 import { scoreToTone } from '../helpers/timeUtils';
+import { TRAINING_COURSES } from '../constants/training';
 
 // Types
 export type Role = 'Coffee' | 'Sandwich' | 'Customer Service' | 'Speed';
@@ -187,9 +189,9 @@ export default function CapabilitiesScreenWeb() {
   
   // Note: Any future CollapsibleSection components should default to expanded (true) on web
   // Clean responsive breakpoints
-  const isStacked = width < 650;    // Single column stacked (mobile)
-  const isTwoByTwo = width >= 650 && width < 1000; // 2x2 grid (tablets)
-  const isFullGrid = width >= 1000; // Full responsive grid (desktop)
+  const isStacked = width < 1050;    // Single column stacked (mobile/tablets)
+  const isTwoByTwo = width >= 1050 && width < 1200; // 2x2 grid (tablets)
+  const isFullGrid = width >= 1200; // Full responsive grid (desktop)
 
   // Debug logging
   React.useEffect(() => {
@@ -331,6 +333,59 @@ export default function CapabilitiesScreenWeb() {
                 </ScrollView>
               </View>
             )}
+          </View>
+
+          {/* Team Analytics Section */}
+          <View style={[styles.teamAnalyticsContainer, isStacked && styles.teamAnalyticsStacked]}>
+            {/* Team Skill Breakdown */}
+            <View style={[styles.teamAnalyticsCard, isStacked && styles.teamAnalyticsCardStacked]}>
+              <Text style={styles.sectionTitle}>Team Skill Breakdown</Text>
+              <View style={styles.radarBackground}>
+                <View style={styles.teamRadarContainer}>
+                  {(() => {
+                    // Calculate team average for each skill
+                    const teamSkills = KNOWN_SKILLS.reduce((acc, skill) => {
+                      const skillValues = employees
+                        .map(emp => emp.skills?.[skill] ?? 0)
+                        .filter(v => v > 0);
+                      const avg = skillValues.length > 0
+                        ? skillValues.reduce((sum, v) => sum + v, 0) / skillValues.length
+                        : 0;
+                      acc[skill] = avg;
+                      return acc;
+                    }, {} as Record<string, number>);
+
+                    const radarLabels = Object.keys(teamSkills);
+                    const radarValues = Object.values(teamSkills);
+
+                    return (
+                      <Radar
+                        size={400}
+                        labels={radarLabels}
+                        values={radarValues}
+                        gridSteps={5}
+                      />
+                    );
+                  })()}
+                </View>
+              </View>
+            </View>
+
+            {/* Team Suggested Training*/}
+            <View style={[styles.teamAnalyticsCard, isStacked && styles.teamAnalyticsCardStacked]}>
+              <Text style={styles.sectionTitle}>Team Suggested Training</Text>
+              <View style={styles.trainingList}>
+                {TRAINING_COURSES.map((training) => (
+                  <TrainingCard
+                    key={training.id}
+                    title={training.title}
+                    tag={training.tag}
+                    duration={training.duration}
+                    blurb={training.blurb}
+                  />
+                ))}
+              </View>
+            </View>
           </View>
 
         </View>
@@ -632,6 +687,44 @@ const styles = StyleSheet.create({
     color: colours.status.success,
     fontSize: 12,
     fontWeight: '600' as any,
+  },
+  // Team Analytics Section
+  teamAnalyticsContainer: {
+    flexDirection: 'row' as any,
+    gap: 20,
+    marginBottom: 20,
+  },
+  teamAnalyticsStacked: {
+    flexDirection: 'column' as any,
+  },
+  teamAnalyticsCard: {
+    flex: 1,
+    backgroundColor: colours.brand.accent,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colours.border.default,
+    minWidth: 320,
+  },
+  teamAnalyticsCardStacked: {
+    minWidth: 'auto' as any,
+    width: '100%',
+  },
+  radarBackground: {
+    backgroundColor: colours.bg.canvas,
+    borderRadius: 12,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: colours.border.default,
+    overflow: 'hidden' as any,
+  },
+  teamRadarContainer: {
+    alignItems: 'center' as any,
+    justifyContent: 'center' as any,
+    overflow: 'hidden' as any,
+  },
+  trainingList: {
+    gap: 16,
   },
 });
 

@@ -75,19 +75,32 @@ export default function Radar({
         const [x, y] = pointAt(i, radius + 18);
         const align = x < cx - 10 ? 'end' : x > cx + 10 ? 'start' : 'middle';
         const dy = y < cy - 10 ? -6 : y > cy + 10 ? 16 : 5;
+        const value = Math.round(values[i] || 0);
         return (
-          <SvgText
-            key={`t${i}`}
-            x={x}
-            y={y + dy}
-            fontSize={12}
-            fill={colours.text.primary}
-            textAnchor={align as any}
-            fontWeight="600"
-            fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
-          >
-            {label}
-          </SvgText>
+          <React.Fragment key={`t${i}`}>
+            <SvgText
+              x={x}
+              y={y + dy}
+              fontSize={12}
+              fill={colours.text.primary}
+              textAnchor={align as any}
+              fontWeight="600"
+              fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+            >
+              {label}
+            </SvgText>
+            <SvgText
+              x={x}
+              y={y + dy + 14}
+              fontSize={11}
+              fill={colours.text.secondary}
+              textAnchor={align as any}
+              fontWeight="400"
+              fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+            >
+              ({value}%)
+            </SvgText>
+          </React.Fragment>
         );
       })}
 

@@ -20,6 +20,7 @@ import ShiftBreakdown from '../components/employees/ShiftBreakdown';
 import { ChevronLeft, X } from 'lucide-react-native';
 import { colours, toneToColor } from '../theme/colours';
 import { scoreToTone } from '../helpers/timeUtils';
+import { TRAINING_COURSES } from '../constants/training';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -70,30 +71,6 @@ export default function EmployeeScreen() {
   const skills = Object.entries(employee.skills ?? {});
   const radarLabels = skills.map(([label]) => label);
   const radarValues = skills.map(([_, v]) => Math.max(0, Math.min(100, Number(v ?? 0))));
-
-  const training = [
-    {
-      id: 't1',
-      title: 'Advanced Coffee Making',
-      tag: 'Coffee',
-      duration: '3 hours',
-      blurb: 'Learn how to make coffees that are not terrible.',
-    },
-    {
-      id: 't2',
-      title: 'Effective Conflict Resolution',
-      tag: 'Soft Skills',
-      duration: '2.5 hours',
-      blurb: 'Strategies for mediating disputes and fostering positive team dynamics.',
-    },
-    {
-      id: 't3',
-      title: 'Cash Register Training',
-      tag: 'Tech',
-      duration: '4 hours',
-      blurb: 'Open the till, count coins, stay calm during rushes.',
-    },
-  ];
 
   return (
     <View style={[s.container, { flex: 1, paddingTop: Math.max(8, insets.top - 32) }]}>
@@ -209,7 +186,7 @@ export default function EmployeeScreen() {
           onToggle={() => toggle('training')}
         >
           <View style={{ gap: 12 }}>
-            {training.map((t) => (
+            {TRAINING_COURSES.map((t) => (
               <TrainingCard
                 key={t.id}
                 title={t.title}
