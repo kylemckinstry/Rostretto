@@ -32,10 +32,8 @@ export const KNOWN_SKILLS: Array<CapabilityRole | string> = [
  * Skill proficiency thresholds
  */
 export const SKILL_THRESHOLD = {
-  /** Skills at or above this are considered high proficiency */
-  HIGH: 80,
-  /** Skills at or below this are considered gaps requiring training */
-  GAP: 50,
+  HIGH: 80, // Skills at or above this are considered high proficiency
+  GAP: 50,  // Skills at or below this are considered gaps requiring training
 } as const;
 
 /**

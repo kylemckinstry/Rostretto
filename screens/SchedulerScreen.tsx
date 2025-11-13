@@ -291,9 +291,7 @@ export default function SchedulerScreen() {
     
     setIsScheduling(true);
     try {
-      console.log('[runAutoScheduleWeek] Scheduling week:', weekId);
       await api.runSchedule(weekId);
-      console.log('[runAutoScheduleWeek] Week scheduled successfully');
 
       // Fetch updated bundle to get the new assignments
       const bundle = await fetchWeekBundle(weekId);
@@ -351,11 +349,8 @@ export default function SchedulerScreen() {
     try {
       const dayKey = mkKey(anchorDate);
       
-      console.log('[runAutoScheduleDay] Scheduling day:', dayKey, 'for week:', weekId);
-      
       // Call the day-specific scheduling endpoint
       await api.runDaySchedule(weekId, dayKey);
-      console.log('[runAutoScheduleDay] Day scheduled successfully');
 
       // Fetch updated bundle to get the new assignments
       const bundle = await fetchWeekBundle(weekId);
@@ -445,8 +440,6 @@ export default function SchedulerScreen() {
           start_time: start,
           end_time: end,
         });
-
-        console.log(`[handleAssign] Saved manual assignment: ${name} to ${start}-${end} as ${assignedRole}`);
         
         // Refresh bundle to get updated state
         const bundle = await fetchWeekBundle(weekId);
@@ -525,14 +518,12 @@ export default function SchedulerScreen() {
 
         if (hasAutoAssignments) {
           // Has auto assignments - need to clear day and rebuild without this employee
-          console.log(`[handleRemoveAll] Converting auto assignment day to manual (removing employee)`);
           
           // Get ALL current time slots from UI
           const currentDaySlots = slots.filter(ts => ts.assignedStaff.length > 0);
 
           // Clear the entire day
           await api.clearDay(weekId, dayKey);
-          console.log(`[handleRemoveAll] Cleared day ${dayKey}`);
 
           // Save back all slots EXCEPT those for the removed employee
           let savedCount = 0;
@@ -542,7 +533,6 @@ export default function SchedulerScreen() {
             for (const staff of ts.assignedStaff) {
               // Skip slots for the employee being removed
               if (staff.name === removeConfirm.staffName) {
-                console.log(`[handleRemoveAll] Skipping slot for removed employee: ${ts.startTime}-${ts.endTime}`);
                 continue;
               }
 
@@ -562,20 +552,12 @@ export default function SchedulerScreen() {
               savedCount++;
             }
           }
-
-          console.log(`[handleRemoveAll] ✓ Converted day to manual: saved ${savedCount} slots, removed employee ${removeConfirm.staffName}`);
         } else {
           // All manual assignments - just delete them
           const manualAssignments = employeeAssignments.filter(a => a.isManual === true);
-          
-          console.log(`[handleRemoveAll] Found ${manualAssignments.length} manual assignments to delete`);
 
           for (const assignment of manualAssignments) {
             await api.deleteManualAssignment(weekId, String(assignment.id));
-          }
-
-          if (manualAssignments.length > 0) {
-            console.log(`[handleRemoveAll] ✓ Deleted ${manualAssignments.length} manual assignments`);
           }
         }
         
@@ -637,13 +619,11 @@ export default function SchedulerScreen() {
         const dayKey = mkKey(anchorDate);
         const emp = employeesUI.find(e => e.name === removeConfirm.staffName);
         if (!emp) {
-          console.log(`[handleRemoveOne] Missing emp`);
           return;
         }
 
         const dayShifts = weekBundle.shifts.filter(s => s.date === dayKey);
         if (dayShifts.length === 0) {
-          console.log(`[handleRemoveOne] No shifts found for ${dayKey}`);
           return;
         }
 
@@ -662,27 +642,20 @@ export default function SchedulerScreen() {
         });
 
         if (!assignmentToDelete) {
-          console.warn(`[handleRemoveOne] ✗ Assignment not found`);
           return;
         }
 
         if (assignmentToDelete.isManual) {
           // Manual assignment - just delete it
-          console.log(`[handleRemoveOne] Deleting manual assignment ${assignmentToDelete.id}`);
           await api.deleteManualAssignment(weekId, String(assignmentToDelete.id));
-          console.log(`[handleRemoveOne] ✓ Deleted manual assignment`);
         } else {
           // Auto-generated assignment - need to clear day and rebuild without this slot
-          console.log(`[handleRemoveOne] Converting auto assignment day to manual`);
           
           // Get ALL current time slots from UI
           const currentDaySlots = slots.filter(ts => ts.assignedStaff.length > 0);
 
-          console.log(`[handleRemoveOne] Found ${currentDaySlots.length} active time slots in UI`);
-
           // Clear the entire day
           await api.clearDay(weekId, dayKey);
-          console.log(`[handleRemoveOne] Cleared day ${dayKey}`);
 
           // Save back all current UI slots as manual assignments EXCEPT the one being removed
           let savedCount = 0;
@@ -694,14 +667,13 @@ export default function SchedulerScreen() {
                 ts.id === removeConfirm.slotId &&
                 staff.name === removeConfirm.staffName
               ) {
-                console.log(`[handleRemoveOne] Skipping removed slot: ${ts.startTime}-${ts.endTime} for ${staff.name}`);
                 continue;
               }
 
               // Find employee by name
               const empObj = employeesUI.find(e => e.name === staff.name);
               if (!empObj) {
-                console.warn(`[handleRemoveOne] Employee not found: ${staff.name}`);
+                continue;
                 continue;
               }
 
@@ -717,8 +689,6 @@ export default function SchedulerScreen() {
               savedCount++;
             }
           }
-
-          console.log(`[handleRemoveOne] ✓ Converted day to manual: saved ${savedCount} slots, removed 1 slot`);
         }
         
         // Refresh bundle to get updated state

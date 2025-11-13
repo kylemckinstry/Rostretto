@@ -9,11 +9,10 @@ const ACTIVE_BG = '#1A4331';
 export default function DateSwitch({
   granularity,
   onGranularityChange,
-  fluid,
+  fluid, // When true, stretches to parent width (for grouped header container)
 }: {
   granularity: 'weekly' | 'daily';
   onGranularityChange: (g: 'weekly' | 'daily') => void;
-  /** When true, stretches to parent width (for grouped header container) */
   fluid?: boolean;
 }) {
   const screenWidth = Dimensions.get('window').width;

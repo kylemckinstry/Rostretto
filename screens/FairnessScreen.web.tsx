@@ -13,7 +13,6 @@ export default function FairnessScreenWeb() {
 
   const handleLearnMore = () => {
     // Placeholder action – will link to concept later
-    console.log('Learn more about Fairness');
   };
 
   return (

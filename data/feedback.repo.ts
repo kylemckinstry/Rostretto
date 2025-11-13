@@ -30,7 +30,6 @@ export function storeFeedback(
   };
   
   feedbackStorage.push(entry);
-  console.log('Feedback stored:', entry);
   
   return entry;
 }

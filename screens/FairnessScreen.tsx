@@ -7,7 +7,6 @@ import { colours } from '../theme/colours';
 export default function FairnessScreen() {
   const handleLearnMore = () => {
     // Placeholder action – will link to concept later
-    console.log('Learn more about Fairness');
   };
 
   return (

@@ -73,12 +73,9 @@ function toUIEmployeeFromUnified(e: Employee & { _raw?: any }): UIEmployee {
   const score = e.metrics?.score ?? 0; // already 0..100 in the unified model
   const name = e.name?.trim() || 'Unnamed';
   
-  console.log('[toUIEmployeeFromUnified]', name, 'score from metrics:', score, 'raw:', e._raw);
-  
   // If we have raw API data, use it for detailed fields
   const raw = e._raw;
   if (raw) {
-    console.log('[toUIEmployeeFromUnified] Using raw data for', name, 'score:', score);
     
     // Skills from API are already in 0-100 range
     const skills: UIEmployee['skills'] = {
@@ -109,7 +106,6 @@ function toUIEmployeeFromUnified(e: Employee & { _raw?: any }): UIEmployee {
       skillSummary: undefined,
     };
     
-    console.log('[toUIEmployeeFromUnified] Created UI employee:', uiEmployee);
     return uiEmployee;
   }
   
@@ -144,8 +140,6 @@ export function useEmployeesUI(): UIEmployee[] {
   const extra = (Constants.expoConfig?.extra || {}) as { useMockData?: boolean };
   const usingMock = !!extra.useMockData;
   
-  console.log('[useEmployeesUI] useMockData:', usingMock);
-
   if (usingMock) {
     // Mock data with detailed skills
     return React.useMemo(
@@ -156,12 +150,10 @@ export function useEmployeesUI(): UIEmployee[] {
 
   // Database data via normalised hook
   const raw = useEmployees();
-  console.log('[useEmployeesUI] Raw employees from useEmployees:', raw);
   const mapped = React.useMemo(
     () => raw.map(toUIEmployeeFromUnified),
     [raw]
   );
-  console.log('[useEmployeesUI] Mapped UI employees:', mapped);
   return mapped;
 }
 

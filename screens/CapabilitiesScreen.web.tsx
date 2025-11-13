@@ -4,14 +4,13 @@ import { useNavigation } from '@react-navigation/native';
 import Header from '../components/Header';
 import { colours, toneToColor } from '../theme/colours';
 import { useEmployeesUI } from '../viewmodels/employees';
-import Radar from '../components/employees/Radar';
-import TrainingCard from '../components/employees/TrainingCard';
+import TeamSkillBreakdown from '../components/employees/TeamSkillBreakdown';
+import TeamSuggestedTraining from '../components/employees/TeamSuggestedTraining';
 import MetricsRow from '../components/web/MetricsRow';
 import { type MetricCard } from '../data/mock/metrics';
 import SearchIcon from '../assets/search.svg';
 import NotificationIcon from '../assets/notification.svg';
 import { scoreToTone } from '../helpers/timeUtils';
-import { TRAINING_COURSES } from '../constants/training';
 import { initials, scorePillColors, normalizePercent } from '../helpers/employeeUtils';
 import { 
   KNOWN_SKILLS, 
@@ -123,11 +122,6 @@ export default function CapabilitiesScreen() {
   const isStacked = width < 1050;    // Single column stacked (mobile/tablets)
   const isTwoByTwo = width >= 1050 && width < 1200; // 2x2 grid (tablets)
   const isFullGrid = width >= 1200; // Full responsive grid (desktop)
-
-  // Debug logging
-  React.useEffect(() => {
-    console.log(`Width: ${width}, isStacked: ${isStacked}, isTwoByTwo: ${isTwoByTwo}, isFullGrid: ${isFullGrid}`);
-  }, [width, isStacked, isTwoByTwo, isFullGrid]);
 
   const [query, setQuery] = React.useState('');
   const filters = React.useMemo(() => parseQuery(query), [query]);
@@ -268,55 +262,8 @@ export default function CapabilitiesScreen() {
 
           {/* Team analytics section */}
           <View style={[styles.teamAnalyticsContainer, isStacked && styles.teamAnalyticsStacked]}>
-            {/* Team skill breakdown */}
-            <View style={[styles.teamAnalyticsCard, isStacked && styles.teamAnalyticsCardStacked]}>
-              <Text style={styles.sectionTitle}>Team Skill Breakdown</Text>
-              <View style={styles.radarBackground}>
-                <View style={styles.teamRadarContainer}>
-                  {(() => {
-                    // Calculate team average for each skill
-                    const teamSkills = KNOWN_SKILLS.reduce((acc, skill) => {
-                      const skillValues = employees
-                        .map(emp => emp.skills?.[skill] ?? 0)
-                        .filter(v => v > 0);
-                      const avg = skillValues.length > 0
-                        ? skillValues.reduce((sum, v) => sum + v, 0) / skillValues.length
-                        : 0;
-                      acc[skill] = avg;
-                      return acc;
-                    }, {} as Record<string, number>);
-
-                    const radarLabels = Object.keys(teamSkills);
-                    const radarValues = Object.values(teamSkills);
-
-                    return (
-                      <Radar
-                        size={400}
-                        labels={radarLabels}
-                        values={radarValues}
-                        gridSteps={5}
-                      />
-                    );
-                  })()}
-                </View>
-              </View>
-            </View>
-
-            {/* Team suggested training */}
-            <View style={[styles.teamAnalyticsCard, isStacked && styles.teamAnalyticsCardStacked]}>
-              <Text style={styles.sectionTitle}>Team Suggested Training</Text>
-              <View style={styles.trainingList}>
-                {TRAINING_COURSES.map((training) => (
-                  <TrainingCard
-                    key={training.id}
-                    title={training.title}
-                    tag={training.tag}
-                    duration={training.duration}
-                    blurb={training.blurb}
-                  />
-                ))}
-              </View>
-            </View>
+            <TeamSkillBreakdown employees={filtered} isStacked={isStacked} />
+            <TeamSuggestedTraining isStacked={isStacked} />
           </View>
 
         </View>
