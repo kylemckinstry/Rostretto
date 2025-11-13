@@ -2,6 +2,7 @@ import * as React from 'react';
 import { View, StyleSheet } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import { startOfWeek, addDays, addWeeks } from '../../utils/date';
+import { colours } from '../../theme/colours';
 import DayTile from './DayTile';
 
 // Week forecast day type - matching web version
@@ -83,11 +84,13 @@ export default function WeekView({
 
 const s = StyleSheet.create({
   dayTileContainer: {
-    backgroundColor: '#E4ECE8',
-    paddingVertical: 16,
+    backgroundColor: colours.bg.lightGreen,
+    paddingVertical: 12, // Reduced to account for tile margins
+    overflow: 'visible', // Allow shadows to render outside bounds
   },
   pager: {
-    height: 200
+    height: 210, // Increased height to accommodate shadow space
+    overflow: 'visible', // Prevent shadow clipping
   },
   pageStyle: {
     flexDirection: 'row',

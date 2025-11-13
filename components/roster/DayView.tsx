@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
+import { colours } from '../../theme/colours';
 import TimeSlot, { TimeSlotData } from '../roster/TimeSlot';
 
 export default function DayView({
@@ -35,6 +36,6 @@ export default function DayView({
 
 const s = StyleSheet.create({
   container: { flex: 1 },
-  timeSlotListContainer: { flex: 1, backgroundColor: '#E4ECE8', borderRadius: 16, marginHorizontal: 16, paddingHorizontal: 12, paddingTop: 12, marginBottom: 80 },
+  timeSlotListContainer: { flex: 1, backgroundColor: colours.bg.lightGreen, borderRadius: 16, marginHorizontal: 16, paddingHorizontal: 12, paddingTop: 12, marginBottom: 80 },
   contentContainer: { paddingBottom: 90 },
 });

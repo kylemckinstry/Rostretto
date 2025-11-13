@@ -39,7 +39,7 @@ const USE_API =
   (typeof window !== 'undefined' && (window as any).__USE_API__ === true);
 
 const PADDED_WRAPPER = { paddingHorizontal: 16 };
-const HEADER_GROUP = { backgroundColor: colours.brand.accent, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 10, marginTop: 16, marginBottom: 4 };
+const HEADER_GROUP = { backgroundColor: colours.bg.lightGreen, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 10, marginTop: 16, marginBottom: 4 };
 
 // Helper to convert date to ISO week ID (e.g., "2025-W45")
 function toIsoWeekId(date: Date): string {

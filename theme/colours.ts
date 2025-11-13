@@ -3,6 +3,7 @@ export const colours = {
     canvas: '#FFFFFF',
     subtle: '#F7FAFC',
     muted: '#E5E7EB',
+    lightGreen: '#E4ECE8', // light Rostretto green for backgrounds
   },
   text: {
     primary: '#171A1F',

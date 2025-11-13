@@ -83,6 +83,14 @@ const s = StyleSheet.create({
     borderColor: '#E2E8F0',
     alignItems: 'center',
     marginRight: 0,
+    marginTop: 4,
+    marginBottom: 5,
+    // Subtle drop shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1, // Android shadow
   },
   dayText: { 
     fontSize: 14, 

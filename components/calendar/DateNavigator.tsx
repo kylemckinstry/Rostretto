@@ -1,6 +1,7 @@
 // components/DateNavigator.tsx
 import * as React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { colours } from '../../theme/colours';
 
 function DateNavigator({
   label,

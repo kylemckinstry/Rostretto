@@ -1,6 +1,7 @@
 // Toggle switch for daily/weekly view
 import * as React from 'react';
 import { View, Text, StyleSheet, Pressable, Dimensions } from 'react-native';
+import { colours } from '../../theme/colours';
 
 // Background colour when button is not selected
 const INACTIVE_BG = '#F4F4F1';
