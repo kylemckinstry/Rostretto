@@ -12,91 +12,18 @@ import SearchIcon from '../assets/search.svg';
 import NotificationIcon from '../assets/notification.svg';
 import { scoreToTone } from '../helpers/timeUtils';
 import { TRAINING_COURSES } from '../constants/training';
+import { initials, scorePillColors, normalizePercent } from '../helpers/employeeUtils';
+import { 
+  KNOWN_SKILLS, 
+  SKILL_COLOURS, 
+  SKILL_THRESHOLD,
+  parseQuery, 
+  passesSkillCmp,
+  type CapabilityRole as Role,
+  type CapabilityEmployee as Employee
+} from '../constants/skills';
 
-// Types
-export type Role = 'Coffee' | 'Sandwich' | 'Customer Service' | 'Speed';
-
-export type Employee = {
-  id: string;
-  name: string;
-  imageUrl?: string;
-  skills?: Partial<Record<Role | string, number>>;
-  score?: number;
-  fairnessColor?: 'green' | 'yellow' | 'red';
-};
-
-const KNOWN_SKILLS: Array<Role | string> = ['Coffee', 'Sandwich', 'Customer Service', 'Speed'];
-
-const SKILL_COLOURS: Record<string, string> = {
-  Coffee: colours.brand.primary,
-  Sandwich: colours.status.success,
-  'Customer Service': colours.status.warning,
-  Speed: colours.text.primary,
-};
-
-// Helper functions
-const initials = (name: string) =>
-  name
-    .split(' ')
-    .filter(Boolean)
-    .map((n) => n[0]?.toUpperCase())
-    .slice(0, 2)
-    .join('');
-
-const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
-// Values are already in 0-100 range from backend, just clamp them
-const normalizePercent = (n?: number) => (typeof n === 'number' ? clamp01(n / 100) : 0);
-
-function scorePillColors(v?: number) {
-  if (typeof v !== 'number') {
-    return { bg: colours.bg.subtle, border: colours.border.default, text: colours.text.primary };
-  }
-  
-  // Use centralized scoreToTone function for consistency
-  const tone = scoreToTone(v);
-  const borderColor = toneToColor(tone);
-  
-  if (tone === 'good') {
-    return { bg: colours.brand.accent, border: borderColor, text: colours.brand.primary };
-  }
-  if (tone === 'warn') {
-    return { bg: colours.status.warningBg, border: colours.status.warningBorder, text: colours.status.warningText };
-  }
-  // alert
-  return { bg: colours.status.dangerBg, border: colours.status.dangerBorder, text: colours.status.dangerText };
-}
-
-// Search parsing
-type Comparator = '>' | '>=' | '<' | '<=' | '=';
-
-function parseQuery(q: string):
-  | { kind: 'name'; needle: string }
-  | { kind: 'skill'; skill: string; cmp: Comparator; value: number }
-  | null {
-  const trimmed = q.trim();
-  if (!trimmed) return null;
-  const skillRegex = /^(?:skill\s*:\s*)?([a-zA-Z][\w\s-]+)\s*(<=|>=|=|<|>)\s*(\d{1,3})$/i;
-  const m = trimmed.match(skillRegex);
-  if (m) {
-    const skill = m[1].trim();
-    const cmp = m[2] as Comparator;
-    const value = Math.max(0, Math.min(100, parseInt(m[3], 10)));
-    return { kind: 'skill', skill, cmp, value };
-  }
-  return { kind: 'name', needle: trimmed.toLowerCase() };
-}
-
-function passesSkillCmp(v: number, cmp: Comparator, target: number) {
-  switch (cmp) {
-    case '>': return v > target;
-    case '>=': return v >= target;
-    case '<': return v < target;
-    case '<=': return v <= target;
-    case '=': return v === target;
-  }
-}
-
-// Staff Card Component
+// Staff card component
 function StaffCapabilityCard({ employee, style }: { employee: Employee; style?: any }) {
   const navigation = useNavigation();
   
@@ -109,11 +36,15 @@ function StaffCapabilityCard({ employee, style }: { employee: Employee; style?: 
     return ordered.slice(0, 4);
   }, [employee.skills]);
 
+  const skillGaps = React.useMemo(
+    () => KNOWN_SKILLS.filter((skill) => (employee.skills?.[skill] ?? 0) <= SKILL_THRESHOLD.GAP),
+    [employee.skills]
+  );
+
   const pill = scorePillColors(employee.score);
 
   const handleCardPress = () => {
-    // @ts-ignore - Navigation types are complex for cross-platform
-    navigation.navigate('Employee', { employeeId: employee.id });
+    (navigation as any).navigate('Employee', { employeeId: employee.id });
   };
 
   return (
@@ -165,12 +96,12 @@ function StaffCapabilityCard({ employee, style }: { employee: Employee; style?: 
       <View style={styles.gapsSection}>
         <Text style={styles.gapsTitle}>Identified Gaps</Text>
         <View style={styles.gapsChips}>
-          {KNOWN_SKILLS.filter((skill) => (employee.skills?.[skill] ?? 0) < 50).map((gap) => (
+          {skillGaps.map((gap) => (
             <View key={gap} style={styles.gapChip}>
               <Text style={styles.gapChipText}>{gap}</Text>
             </View>
           ))}
-          {KNOWN_SKILLS.filter((skill) => (employee.skills?.[skill] ?? 0) < 50).length === 0 && (
+          {skillGaps.length === 0 && (
             <View style={styles.noGapsContainer}>
               <Text style={styles.noGapsText}>✓ No gaps identified</Text>
             </View>
@@ -181,8 +112,8 @@ function StaffCapabilityCard({ employee, style }: { employee: Employee; style?: 
   );
 }
 
-// Main Component
-export default function CapabilitiesScreenWeb() {
+// Main component
+export default function CapabilitiesScreen() {
   const { width } = useWindowDimensions();
   const navigation = useNavigation();
   const employees = useEmployeesUI();
@@ -223,7 +154,7 @@ export default function CapabilitiesScreenWeb() {
     const totalStaff = employees.length;
     const skillGaps = employees.reduce((gaps, emp) => {
       KNOWN_SKILLS.forEach(skill => {
-        if ((emp.skills?.[skill] ?? 0) < 50) {
+        if ((emp.skills?.[skill] ?? 0) <= SKILL_THRESHOLD.GAP) {
           gaps++;
         }
       });
@@ -249,7 +180,7 @@ export default function CapabilitiesScreenWeb() {
   ];
 
   return (
-    <View style={{ flex: 1, backgroundColor: colours.bg.muted }}>
+    <View style={styles.container}>
       <Header />
 
       <ScrollView style={styles.page} contentContainerStyle={styles.pageContentWrapper}>
@@ -335,9 +266,9 @@ export default function CapabilitiesScreenWeb() {
             )}
           </View>
 
-          {/* Team Analytics Section */}
+          {/* Team analytics section */}
           <View style={[styles.teamAnalyticsContainer, isStacked && styles.teamAnalyticsStacked]}>
-            {/* Team Skill Breakdown */}
+            {/* Team skill breakdown */}
             <View style={[styles.teamAnalyticsCard, isStacked && styles.teamAnalyticsCardStacked]}>
               <Text style={styles.sectionTitle}>Team Skill Breakdown</Text>
               <View style={styles.radarBackground}>
@@ -371,7 +302,7 @@ export default function CapabilitiesScreenWeb() {
               </View>
             </View>
 
-            {/* Team Suggested Training*/}
+            {/* Team suggested training */}
             <View style={[styles.teamAnalyticsCard, isStacked && styles.teamAnalyticsCardStacked]}>
               <Text style={styles.sectionTitle}>Team Suggested Training</Text>
               <View style={styles.trainingList}>
@@ -395,6 +326,10 @@ export default function CapabilitiesScreenWeb() {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colours.bg.muted,
+  },
   page: { 
     flex: 1, 
     backgroundColor: colours.bg.muted 

@@ -15,103 +15,28 @@ import SearchIcon from '../assets/search.svg';
 import { useEmployeesUI } from '../viewmodels/employees';
 import { colours, toneToColor } from '../theme/colours';
 import { scoreToTone } from '../helpers/timeUtils';
-
-// Types from store (UI-facing version)
-export type Role = 'Coffee' | 'Sandwich' | 'Customer Service' | 'Speed';
-
-export type Employee = {
-  id: string;
-  name: string;
-  imageUrl?: string;
-  skills?: Partial<Record<Role | string, number>>;
-  score?: number;
-  fairnessColor?: 'green' | 'yellow' | 'red';
-};
-
-// Roles can be exported elsewhere for reuse
-const KNOWN_SKILLS: Array<Role | string> = ['Coffee', 'Sandwich', 'Customer Service', 'Speed'];
-
-// Consistent colours per skill
-const SKILL_COLOURS: Record<string, string> = {
-  Coffee: colours.brand.primary,
-  Sandwich: colours.status.success,
-  'Customer Service': colours.status.warning,
-  Speed: colours.text.primary,
-};
-
-// Helpers
-const initials = (name: string) =>
-  name
-    .split(' ')
-    .filter(Boolean)
-    .map((n) => n[0]?.toUpperCase())
-    .slice(0, 2)
-    .join('');
-
-const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
-const normalizePercent = (n?: number) => (typeof n === 'number' ? clamp01(n / 100) : 0);
+import { initials, scorePillColors, clamp01, normalizePercent } from '../helpers/employeeUtils';
+import { 
+  KNOWN_SKILLS, 
+  SKILL_COLOURS, 
+  parseQuery, 
+  passesSkillCmp,
+  type CapabilityRole as Role,
+  type CapabilityEmployee as Employee
+} from '../constants/skills';
 
 function barColor(pct: number) {
-  // Use centralized scoreToTone for consistency (pct is 0-1, convert to 0-100)
+  // Use centralised scoreToTone for consistency (pct is 0-1, convert to 0-100)
   const tone = scoreToTone(pct * 100);
   return toneToColor(tone);
 }
 
-function scorePillColors(v?: number) {
-  if (typeof v !== 'number') {
-    return { bg: colours.bg.subtle, border: colours.border.default, text: colours.text.primary };
-  }
-  
-  // Use centralized scoreToTone function for consistency
-  const tone = scoreToTone(v);
-  const borderColor = toneToColor(tone);
-  
-  if (tone === 'good') {
-    return { bg: colours.brand.accent, border: borderColor, text: colours.brand.primary };
-  }
-  if (tone === 'warn') {
-    return { bg: colours.status.warningBg, border: colours.status.warningBorder, text: colours.status.warningText };
-  }
-  // alert
-  return { bg: colours.status.dangerBg, border: colours.status.dangerBorder, text: colours.status.dangerText };
-}
-
-// Search parsing
-type Comparator = '>' | '>=' | '<' | '<=' | '=';
-function parseQuery(q: string):
-  | { kind: 'name'; needle: string }
-  | { kind: 'skill'; skill: string; cmp: Comparator; value: number }
-  | null {
-  const trimmed = q.trim();
-  if (!trimmed) return null;
-  const skillRegex =
-    /^(?:skill\s*:\s*)?([a-zA-Z][\w\s-]+)\s*(<=|>=|=|<|>)\s*(\d{1,3})$/i;
-  const m = trimmed.match(skillRegex);
-  if (m) {
-    const skill = m[1].trim();
-    const cmp = m[2] as Comparator;
-    const value = Math.max(0, Math.min(100, parseInt(m[3], 10)));
-    return { kind: 'skill', skill, cmp, value };
-  }
-  return { kind: 'name', needle: trimmed.toLowerCase() };
-}
-
-function passesSkillCmp(v: number, cmp: Comparator, target: number) {
-  switch (cmp) {
-    case '>': return v > target;
-    case '>=': return v >= target;
-    case '<': return v < target;
-    case '<=': return v <= target;
-    case '=': return v === target;
-  }
-}
-
-// SkillBar component
+// Skill bar component
 function SkillBar({ label, value }: { label: string; value: number }) {
   const pct = normalizePercent(value);
   const width = `${Math.round(pct * 100)}%`;
   const rawValue = value ?? 0;
-  // Use centralized scoreToTone function for consistent color mapping
+  // Use centralised scoreToTone function for consistent colour mapping
   const tone = scoreToTone(rawValue);
   const tint = toneToColor(tone);
   const fillStyle: any = { width, backgroundColor: tint };
@@ -126,7 +51,7 @@ function SkillBar({ label, value }: { label: string; value: number }) {
   );
 }
 
-// EmployeeTile component
+// Employee tile component
 function EmployeeTile({ employee, onPress }: { employee: Employee; onPress: () => void }) {
   const topSkills = React.useMemo(() => {
     const entries = Object.entries(employee.skills ?? {});
@@ -188,7 +113,7 @@ function EmployeeTile({ employee, onPress }: { employee: Employee; onPress: () =
   );
 }
 
-// Main Screen
+// Main screen
 export default function CapabilitiesScreen() {
   const insets = useSafeAreaInsets();
   const nav = useNavigation();

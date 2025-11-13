@@ -8,7 +8,7 @@ import type { EmployeeLite } from '../api/client';
 const TIME_OPTIONS = generateTimeOptions();
 const timeIdx = new Map(TIME_OPTIONS.map((t, i) => [t, i]));
 
-// Convert 24-hour time (HH:MM) to 12-hour format with am/pm (e.g., "7:00 am")
+// Convert 24-hour time (HH:MM) to 12-hour format with am/pm (e.g "7:00 am")
 function to12Hour(time24: string): string {
   const [hoursStr, minutesStr] = time24.split(':');
   let hours = parseInt(hoursStr, 10);

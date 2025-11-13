@@ -19,37 +19,12 @@ import { colours, toneToColor } from '../theme/colours';
 import { scoreToTone } from '../helpers/timeUtils';
 import Header from '../components/Header';
 import { TRAINING_COURSES } from '../constants/training';
+import { initials, scorePillColors } from '../helpers/employeeUtils';
 
 type RootStackParamList = {
   Employee: { employeeId: string };
 };
 type EmployeeRoute = RouteProp<RootStackParamList, 'Employee'>;
-
-const initials = (name: string) =>
-  name
-    ?.split(' ')
-    .filter(Boolean)
-    .map((n) => n[0]?.toUpperCase())
-    .slice(0, 2)
-    .join('') || '';
-
-function scorePillColors(v?: number) {
-  if (typeof v !== 'number') {
-    return { bg: colours.bg.subtle, border: colours.border.default, text: colours.text.primary };
-  }
-  
-  const tone = scoreToTone(v);
-  const borderColor = toneToColor(tone);
-  
-  if (tone === 'good') {
-    return { bg: colours.brand.accent, border: borderColor, text: colours.brand.primary };
-  }
-  if (tone === 'warn') {
-    return { bg: colours.status.warningBg, border: colours.status.warningBorder, text: colours.status.warningText };
-  }
-  // alert
-  return { bg: colours.status.dangerBg, border: colours.status.dangerBorder, text: colours.status.dangerText };
-}
 
 export default function EmployeeScreenWeb() {
   const route = useRoute<EmployeeRoute>();

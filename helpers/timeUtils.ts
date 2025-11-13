@@ -1,11 +1,11 @@
-//Shared time utilities for scheduler functionality
+// Shared time utilities for scheduler functionality
 
 /**
  * Convert time string to minutes since midnight for comparison
  * Handles both "9:00 am" and "9:00am" formats
  */
 export function toMinutes(timeStr: string): number {
-  // Normalize by ensuring there's a space before am/pm
+  // Normalise by ensuring there's a space before am/pm
   const normalized = timeStr.trim().replace(/(\d)([ap]m)/i, '$1 $2');
   const match = normalized.match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/i);
   
@@ -22,7 +22,7 @@ export function toMinutes(timeStr: string): number {
 }
 
 // Convert employee score (0-100 scale) to tone indicator
-// Based on normalized fitness threshold: 70%+ = good, 50-69% = warn, <50% = alert
+// Based on normalised fitness threshold: 70%+ = good, 50-69% = warn, <50% = alert
 export function scoreToTone(score?: number): 'good' | 'warn' | 'alert' {
   const value = score ?? 0;
   if (value >= 70) return 'good';   // 70+ = green (good fit for role)

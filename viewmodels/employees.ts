@@ -5,6 +5,7 @@ import type { Employee } from '../models/schemas';
 import type { Employee as StateEmployee } from '../state/types';
 import { useEmployees } from '../state/employees';
 import { MOCK_EMPLOYEES } from '../data/mock/employees';
+import { SKILL_THRESHOLD } from '../constants/skills';
 
 // UI Types
 export type SkillSummary = { high: string[]; low: string[] };
@@ -38,8 +39,8 @@ function toUIEmployeeFromLegacy(e: any): UIEmployee {
   };
   const entries = Object.entries(skills).filter(([, v]) => typeof v === 'number');
   const sorted = entries.sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0));
-  const high = sorted.filter(([, v]) => (v ?? 0) >= 80).slice(0, 3).map(([k]) => k);
-  const low = sorted.filter(([, v]) => (v ?? 0) <= 50).slice(0, 3).map(([k]) => k);
+  const high = sorted.filter(([, v]) => (v ?? 0) >= SKILL_THRESHOLD.HIGH).slice(0, 3).map(([k]) => k);
+  const low = sorted.filter(([, v]) => (v ?? 0) <= SKILL_THRESHOLD.GAP).slice(0, 3).map(([k]) => k);
 
   const name =
     (e.name ?? `${e.first_name ?? ''} ${e.last_name ?? ''}`)?.trim() || 'Unnamed';

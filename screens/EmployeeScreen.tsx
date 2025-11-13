@@ -21,6 +21,7 @@ import { ChevronLeft, X } from 'lucide-react-native';
 import { colours, toneToColor } from '../theme/colours';
 import { scoreToTone } from '../helpers/timeUtils';
 import { TRAINING_COURSES } from '../constants/training';
+import { initials } from '../helpers/employeeUtils';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -30,14 +31,6 @@ type RootStackParamList = {
   Employee: { employeeId: string };
 };
 type EmployeeRoute = RouteProp<RootStackParamList, 'Employee'>;
-
-const initials = (name: string) =>
-  name
-    ?.split(' ')
-    .filter(Boolean)
-    .map((n) => n[0]?.toUpperCase())
-    .slice(0, 2)
-    .join('') || '';
 
 export default function EmployeeScreen() {
   const route = useRoute<EmployeeRoute>();
