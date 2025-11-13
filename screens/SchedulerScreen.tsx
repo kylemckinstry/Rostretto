@@ -327,12 +327,16 @@ export default function SchedulerScreen() {
       setWeekBundle(bundle);
       setWeekDaysLive(tiles);
 
-      Alert.alert('Success', `Schedule created for ${weekId}: ${bundle.assignments.length} assignments`);
+      // Format week range for alert
+      const weekEnd = addDays(weekStart, 6);
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const weekRange = `${months[weekStart.getMonth()]} ${weekStart.getDate()} - ${months[weekEnd.getMonth()]} ${weekEnd.getDate()}`;
+      Alert.alert('Success', `Schedule created for ${weekRange}: ${bundle.assignments.length} assignments`);
     } catch (e: any) {
       console.warn(e);
       const errorMsg = e?.message ?? String(e);
       if (errorMsg.includes('No shifts found')) {
-        Alert.alert('Error', `Cannot schedule ${weekId}: No shifts exist for this week. Please create shifts in the database first.`);
+        Alert.alert('Error', `Cannot schedule week: No shifts exist for this week. Please create shifts in the database first.`);
       } else {
         Alert.alert('Error', `Scheduling error: ${errorMsg}`);
       }
@@ -384,7 +388,11 @@ export default function SchedulerScreen() {
       setWeekBundle(bundle);
       setWeekDaysLive(tiles);
 
-      Alert.alert('Success', `Day ${dayKey} scheduled successfully`);
+      // Format date for alert message
+      const wd = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][anchorDate.getDay()];
+      const m = ['January','February','March','April','May','June','July','August','September','October','November','December'][anchorDate.getMonth()];
+      const formattedDate = `${wd}, ${anchorDate.getDate()} ${m}`;
+      Alert.alert('Success', `${formattedDate} scheduled successfully`);
     } catch (e: any) {
       console.warn(e);
       const errorMsg = e?.message ?? String(e);

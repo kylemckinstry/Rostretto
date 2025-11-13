@@ -34,8 +34,8 @@ export function weekRangeLabel(anchor: Date): string {
 
 export function dayLabelLong(d: Date): string {
   const wd = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d.getDay()];
-  const m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d.getMonth()];
-  return `${wd}, ${m} ${d.getDate()}`;
+  const m = ['January','February','March','April','May','June','July','August','September','October','November','December'][d.getMonth()];
+  return `${wd}, ${d.getDate()} ${m}, ${d.getFullYear()}`;
 }
 
 export function isSameDay(a: Date, b: Date): boolean {

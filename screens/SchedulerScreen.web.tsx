@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { addDays, addWeeks, startOfWeek } from '../utils/date';
 import Header from '../components/Header'; // Automatically resolves to web-specific header component
 import { colours } from '../theme/colours';
+import { showAlert } from '../components/shared/CustomAlert';
 import { DayIndicators } from '../state/types';
 import { TimeSlotData } from '../components/web/TimeSlot.web';
 import { scoreToTone } from '../helpers/timeUtils';
@@ -420,14 +421,18 @@ export default function SchedulerScreenWeb() {
       });
       setScheduledDays(daysWithAssignments);
 
-      alert(`Schedule created for ${weekId}: ${bundle.assignments.length} assignments`);
+      // Format week range for alert
+      const weekEnd = addDays(weekStart, 6);
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const weekRange = `${months[weekStart.getMonth()]} ${weekStart.getDate()} - ${months[weekEnd.getMonth()]} ${weekEnd.getDate()}`;
+      showAlert(`Schedule created for ${weekRange}: ${bundle.assignments.length} assignments`);
     } catch (e: any) {
       console.warn(e);
       const errorMsg = e?.message ?? String(e);
       if (errorMsg.includes('No shifts found')) {
-        alert(`Cannot schedule ${weekId}: No shifts exist for this week. Please create shifts in the database first.`);
+        showAlert(`Cannot schedule ${weekId}: No shifts exist for this week. Please create shifts in the database first.`);
       } else {
-        alert(`Scheduling error: ${errorMsg}`);
+        showAlert(`Scheduling error: ${errorMsg}`);
       }
     } finally {
       setIsScheduling(false);
@@ -447,15 +452,6 @@ export default function SchedulerScreenWeb() {
       if (!weekBundle) return;
       const dayShifts = weekBundle.shifts.filter(s => s.date === dayKey);
       setTimeSlots(generateTimeSlots(dayShifts));
-      
-      // Check if this day is already scheduled
-      if (scheduledDays.has(dayKey)) {
-        const confirm = window.confirm(`${dayKey} is already scheduled. Re-schedule this day?`);
-        if (!confirm) {
-          setIsScheduling(false);
-          return;
-        }
-      }
       
       // Call the day-specific scheduling endpoint
       await api.runDaySchedule(weekId, dayKey);
@@ -500,19 +496,19 @@ export default function SchedulerScreenWeb() {
       // Mark this day as scheduled
       setScheduledDays(prev => new Set(prev).add(dayKey));
 
-      const dayAssignments = bundle.assignments.filter(a => {
-        const shift = bundle.shifts.find(s => s.shiftId === a.shiftId);
-        return shift?.date === dayKey;
-      });
-      alert(`Schedule created for ${dayKey}: ${dayAssignments.length} assignments`);
+      // Format date for alert message
+      const wd = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][anchorDate.getDay()];
+      const m = ['January','February','March','April','May','June','July','August','September','October','November','December'][anchorDate.getMonth()];
+      const formattedDate = `${wd}, ${anchorDate.getDate()} ${m}`;
+      showAlert(`${formattedDate} scheduled successfully`);
     } catch (e: any) {
       console.warn(e);
       const dayKey = mkKey(anchorDate);
       const errorMsg = e?.message ?? String(e);
       if (errorMsg.includes('No shifts found')) {
-        alert(`Cannot schedule ${dayKey}: No shifts exist for this day. Please create shifts in the database first.`);
+        showAlert(`Cannot schedule ${dayKey}: No shifts exist for this day. Please create shifts in the database first.`);
       } else {
-        alert(`Scheduling error: ${errorMsg}`);
+        showAlert(`Scheduling error: ${errorMsg}`);
       }
     } finally {
       setIsScheduling(false);
@@ -830,7 +826,7 @@ export default function SchedulerScreenWeb() {
         recalculateIndicators(bundle);
       } catch (e) {
         console.error('[handleRemoveOne] Failed to delete from backend:', e);
-        alert('Failed to remove assignment. Please try again.');
+        showAlert('Failed to remove assignment. Please try again.');
       }
     })();
 
@@ -910,7 +906,7 @@ export default function SchedulerScreenWeb() {
         setScheduledDays(prev => new Set(prev).add(dayKey));
       } catch (e) {
         console.error('[handleAssignStaff] Failed to save to backend:', e);
-        alert('Failed to save assignment. Please try again.');
+        showAlert('Failed to save assignment. Please try again.');
       }
     })();
 
@@ -956,12 +952,9 @@ export default function SchedulerScreenWeb() {
 
   // Format current day date for navigation
   const formatDayDate = (date: Date) => {
-    return date.toLocaleDateString(undefined, {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric'
-    });
+    const wd = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][date.getDay()];
+    const m = ['January','February','March','April','May','June','July','August','September','October','November','December'][date.getMonth()];
+    return `${wd}, ${date.getDate()} ${m}, ${date.getFullYear()}`;
   };
 
   // Calculate weekly demand forecast metrics from weekDaysLive
