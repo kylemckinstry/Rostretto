@@ -1,5 +1,6 @@
 // api/client.ts
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
 const expoConfig = Constants.expoConfig ?? ({} as any);
 const extra = (expoConfig.extra ?? {}) as {
@@ -8,16 +9,19 @@ const extra = (expoConfig.extra ?? {}) as {
 };
 
 // Fallback to Cloud Run if extra not loaded correctly
-export const API_BASE =
-  extra.EXPO_PUBLIC_API_BASE_URL ??
-  'https://rostretto-scheduler-127031505005.australia-southeast1.run.app';
+// For web builds, always use the production API
+export const API_BASE = Platform.OS === 'web'
+  ? 'https://rostretto-scheduler-127031505005.australia-southeast1.run.app'
+  : (extra.EXPO_PUBLIC_API_BASE_URL ?? 'https://rostretto-scheduler-127031505005.australia-southeast1.run.app');
 
 // Compute USE_API from extra with sane defaults
-export const USE_API =
-  typeof extra.EXPO_PUBLIC_USE_API === 'boolean'
-    ? extra.EXPO_PUBLIC_USE_API
-    : extra.EXPO_PUBLIC_USE_API === 'true' ||
-      extra.EXPO_PUBLIC_USE_API === undefined;
+// For web builds, always enable API
+export const USE_API = Platform.OS === 'web'
+  ? true
+  : (typeof extra.EXPO_PUBLIC_USE_API === 'boolean'
+      ? extra.EXPO_PUBLIC_USE_API
+      : extra.EXPO_PUBLIC_USE_API === 'true' ||
+        extra.EXPO_PUBLIC_USE_API === undefined);
 
 
 

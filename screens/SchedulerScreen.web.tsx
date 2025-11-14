@@ -38,16 +38,10 @@ import { fetchWeekBundle, type WeekBundle } from '../data/scheduler.repo';
 import { buildDaySlots } from '../viewmodels/schedule';
 import { buildWeekIndicators } from '../helpers/indicators';
 
-import { api } from '../api/client';
+import { api, USE_API } from '../api/client';
 import Constants from 'expo-constants';
 
 const TIME_OPTIONS = generateTimeOptions();
-
-// Runtime feature flag: prefer Expo env, but allow quick toggle via window.__USE_API__ for dev
-const USE_API =
-  (typeof process !== 'undefined' && (process as any).env?.EXPO_PUBLIC_USE_API === 'true') ||
-  (Constants.expoConfig?.extra?.EXPO_PUBLIC_USE_API === 'true') ||
-  (typeof window !== 'undefined' && (window as any).__USE_API__ === true);
 
 export default function SchedulerScreenWeb() {
   const navigation = useNavigation();
@@ -153,6 +147,7 @@ export default function SchedulerScreenWeb() {
     let cancelled = false;
     (async () => {
       try {
+        console.log('[SchedulerScreen.web] USE_API:', USE_API, 'weekId:', weekId);
         if (!USE_API) {
           setWeekBundle(null);
           setWeekDaysLive(null);
@@ -160,6 +155,7 @@ export default function SchedulerScreenWeb() {
           return;
         }
         const bundle = await fetchWeekBundle(weekId);
+        console.log('[SchedulerScreen.web] Bundle fetched:', bundle);
         if (cancelled) return;
         setWeekBundle(bundle);
 
@@ -207,6 +203,7 @@ export default function SchedulerScreenWeb() {
           };
         });
         setWeekDaysLive(tiles);
+        console.log('[SchedulerScreen.web] Set weekDaysLive:', tiles);
 
         // Initialize time slots for the current day based on whether it has assignments
         const dayKey = mkKey(anchorDate);
@@ -566,10 +563,10 @@ export default function SchedulerScreenWeb() {
       // Clear local time slots
       setTimeSlots(generateTimeSlots(bundle.shifts.filter(s => s.date === dayKey)));
       
-      alert('All staff removed from today\'s roster');
+      showAlert('Roster cleared successfully');
     } catch (e) {
       console.error('[handleClearRoster] Failed to clear roster:', e);
-      alert('Failed to clear roster. Please try again.');
+      showAlert('Failed to clear roster. Please try again.');
     }
   };
 

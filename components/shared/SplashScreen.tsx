@@ -1,9 +1,12 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated, Dimensions } from 'react-native';
+import { View, StyleSheet, Animated, Dimensions, Platform } from 'react-native';
 import { colours } from '../../theme/colours';
 import RostrettoLogo from '../../assets/Rostretto-logo-white.svg';
 
 const { width, height } = Dimensions.get('window');
+
+// Web needs smaller circles so they don't cover the entire background
+const circleScale = Platform.OS === 'web' ? 1.4 : 2;
 
 export default function SplashScreen() {
   const waveAnim1 = useRef(new Animated.Value(0)).current;
@@ -118,20 +121,20 @@ const styles = StyleSheet.create({
   },
   wave: {
     position: 'absolute',
-    width: width * 2,
-    height: width * 2, // Make it square for circular shape
-    borderRadius: width, // Full border radius for circle
+    width: width * circleScale,
+    height: width * circleScale, // Make it square for circular shape
+    borderRadius: width * circleScale, // Full border radius for circle
     opacity: 0.1,
   },
   wave1: {
     backgroundColor: '#FFFFFF',
-    bottom: -width * 0.8, // Position to show top curve
-    left: -width * 0.5,
+    bottom: -width * 0.8 * circleScale, // Position to show top curve
+    left: -width * 0.5 * circleScale,
   },
   wave2: {
     backgroundColor: '#FFFFFF',
-    bottom: -width * 0.85, // Slightly different position
-    left: -width * 0.3,
+    bottom: -width * 0.85 * circleScale, // Slightly different position
+    left: -width * 0.3 * circleScale,
     opacity: 0.15,
   },
   logoContainer: {

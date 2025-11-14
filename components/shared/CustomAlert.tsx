@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, Modal, Platform } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Modal, Platform, Animated } from 'react-native';
 import { colours } from '../../theme/colours';
 
 type AlertConfig = {
@@ -20,17 +20,33 @@ export function showAlert(message: string) {
 
 export function CustomAlertProvider({ children }: { children: React.ReactNode }) {
   const [alertConfig, setAlertConfig] = React.useState<AlertConfig | null>(null);
+  const fadeAnim = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
-    showAlertFn = (config) => setAlertConfig(config);
+    showAlertFn = (config) => {
+      setAlertConfig(config);
+      // Fade in
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    };
     return () => {
       showAlertFn = null;
     };
   }, []);
 
   const handleClose = () => {
-    alertConfig?.onClose();
-    setAlertConfig(null);
+    // Fade out before closing
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      alertConfig?.onClose();
+      setAlertConfig(null);
+    });
   };
 
   return (
@@ -39,18 +55,19 @@ export function CustomAlertProvider({ children }: { children: React.ReactNode })
       <Modal
         visible={!!alertConfig}
         transparent
-        animationType="fade"
+        animationType="none"
         onRequestClose={handleClose}
       >
-        <Pressable style={styles.overlay} onPress={handleClose}>
-          <Pressable style={styles.dialog} onPress={(e) => e.stopPropagation()}>
+        <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
+          <Animated.View style={[styles.dialog, { opacity: fadeAnim }]}>
             <Text style={styles.title}>Rostretto</Text>
             <Text style={styles.message}>{alertConfig?.message}</Text>
             <Pressable style={styles.button} onPress={handleClose}>
               <Text style={styles.buttonText}>OK</Text>
             </Pressable>
-          </Pressable>
-        </Pressable>
+          </Animated.View>
+        </Animated.View>
       </Modal>
     </>
   );

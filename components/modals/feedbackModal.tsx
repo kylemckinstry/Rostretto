@@ -170,6 +170,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 32,
     width: 320,
+    minHeight: 380, // Fixed minimum height to prevent shift on first selection
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -215,11 +216,14 @@ const styles = StyleSheet.create({
     color: colours.text.secondary,
     textAlign: 'center',
     marginBottom: 20,
+    minHeight: 20, // Prevent height shift
   },
   ratingContainer: {
     flexDirection: 'row',
     gap: 12,
     justifyContent: 'center',
+    marginBottom: 24, // Fixed spacing between rating and submit button
+    height: 44, // Fixed height to prevent shift
   },
   ratingButton: {
     width: 44,
@@ -228,7 +232,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden', // Ensure content doesn't shift
   },
   ratingButtonPressed: {
     opacity: 0.7,
@@ -237,6 +240,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     textAlign: 'center',
+    lineHeight: 18, // Fixed line height
     includeFontPadding: false, // Remove extra padding on Android
   },
   submitButton: {
@@ -244,17 +248,17 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 32,
     borderRadius: 10,
-    marginTop: 24,
-    width: '100%',
+    alignSelf: 'stretch', // Match parent width (same as rating container)
     alignItems: 'center',
+    borderWidth: 1, // Always have border to prevent size shift
+    borderColor: colours.brand.primary, // Match background when active
   },
   submitButtonPressed: {
     opacity: 0.7,
   },
   submitButtonDisabled: {
     backgroundColor: colours.bg.subtle,
-    borderWidth: 1,
-    borderColor: colours.border.default,
+    borderColor: colours.border.default, // Only change border color, not width
   },
   submitButtonText: {
     color: colours.bg.canvas,
