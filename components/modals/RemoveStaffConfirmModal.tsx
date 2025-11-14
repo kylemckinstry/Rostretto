@@ -32,7 +32,11 @@ export default function RemoveStaffConfirmModal({
 
           <View style={styles.buttonGroup}>
             <Pressable
-              style={[styles.button, styles.buttonDestructive]}
+              style={({ pressed }) => [
+                styles.button,
+                styles.buttonDestructive,
+                pressed && styles.buttonPressed
+              ]}
               onPress={onRemoveAll}
             >
               <Text style={[styles.buttonText, styles.buttonTextDestructive]}>
@@ -41,7 +45,11 @@ export default function RemoveStaffConfirmModal({
             </Pressable>
 
             <Pressable
-              style={[styles.button, styles.buttonSecondary]}
+              style={({ pressed }) => [
+                styles.button,
+                styles.buttonSecondary,
+                pressed && styles.buttonPressed
+              ]}
               onPress={onRemoveOne}
             >
               <Text style={[styles.buttonText, styles.buttonTextSecondary]}>
@@ -50,7 +58,11 @@ export default function RemoveStaffConfirmModal({
             </Pressable>
 
             <Pressable
-              style={[styles.button, styles.buttonCancel]}
+              style={({ pressed }) => [
+                styles.button,
+                styles.buttonCancel,
+                pressed && styles.buttonPressed
+              ]}
               onPress={onCancel}
             >
               <Text style={[styles.buttonText, styles.buttonTextMuted]}>
@@ -121,6 +133,9 @@ const styles = StyleSheet.create({
       },
     }),
   } as any,
+  buttonPressed: {
+    opacity: 0.7,
+  },
   buttonDestructive: {
     backgroundColor: colours.status.danger,
     borderColor: colours.status.danger,

@@ -16,7 +16,7 @@ export default function Radar({
   gridSteps = 4,
 }: Props) {
   const count = labels.length;
-  const padding = 50; // Extra space for labels
+  const padding = 60; // Extra space for labels
   const svgSize = size + (padding * 2);
   const cx = svgSize / 2;
   const cy = svgSize / 2;
@@ -72,16 +72,24 @@ export default function Radar({
 
       {/* axis labels */}
       {labels.map((label, i) => {
-        const [x, y] = pointAt(i, radius + 18);
-        const align = x < cx - 10 ? 'end' : x > cx + 10 ? 'start' : 'middle';
-        const dy = y < cy - 10 ? -6 : y > cy + 10 ? 16 : 5;
+        const [x, y] = pointAt(i, radius + 28);
+        const angle = angleFor(i);
+        
+        // Calculate alignment based on angle
+        let align: 'start' | 'middle' | 'end' = 'middle';
+        if (angle > -Math.PI / 4 && angle < Math.PI / 4) align = 'start'; // right
+        else if (angle > 3 * Math.PI / 4 || angle < -3 * Math.PI / 4) align = 'end'; // left
+        
+        // Use a fixed vertical offset for all labels to ensure perfect alignment
+        const dy = 0; // No vertical adjustments - all labels at same level
+        
         const value = Math.round(values[i] || 0);
         return (
           <React.Fragment key={`t${i}`}>
             <SvgText
               x={x}
               y={y + dy}
-              fontSize={12}
+              fontSize={13}
               fill={colours.text.primary}
               textAnchor={align as any}
               fontWeight="600"
@@ -91,14 +99,14 @@ export default function Radar({
             </SvgText>
             <SvgText
               x={x}
-              y={y + dy + 14}
+              y={y + dy + 16}
               fontSize={11}
               fill={colours.text.secondary}
               textAnchor={align as any}
               fontWeight="400"
               fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
             >
-              ({value}%)
+              {`${value}%`}
             </SvgText>
           </React.Fragment>
         );

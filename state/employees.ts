@@ -3,16 +3,16 @@ import Constants from 'expo-constants';
 import type { Employee } from '../models/schemas';
 import { employeeDtoSchema, type EmployeeDTO } from '../models/schemas';
 import type { EmployeeLite } from '../api/client';
+import { API_BASE, USE_API } from '../api/client';
 import { MOCK_EMPLOYEES } from '../data/mock/employees';   // note: 'mock' (singular)
 import { subscribeEmployees } from '../data/employees.repo';
 import { normaliseEmployee } from '../models/normalisers';
 
 type Unsub = () => void;
 
+// Use the API_BASE from client.ts instead of recomputing it
 function apiBase(): string {
-  const fromEnv = process.env.EXPO_PUBLIC_API_BASE_URL as string | undefined;
-  const fromExtra = Constants.expoConfig?.extra?.EXPO_PUBLIC_API_BASE_URL as string | undefined;
-  return (fromEnv || fromExtra || 'http://localhost:5057').replace(/\/+$/, '');
+  return API_BASE;
 }
 
 function useMockEmployees(set: (e: Employee[]) => void): Unsub {
@@ -87,22 +87,21 @@ function useApiEmployees(set: (e: Employee[]) => void): Unsub {
 
 /** Returns employees from mock, API, or Firestore based on flags:
  *  1) expo.extra.useMockData === true  -> mock
- *  2) EXPO_PUBLIC_USE_API === 'true'   -> API
+ *  2) USE_API === true                 -> API
  *  3) else                             -> Firestore
  */
 export function useEmployees(): Employee[] {
   const [list, setList] = React.useState<Employee[]>([]);
 
   React.useEffect(() => {
-    const extra = (Constants.expoConfig?.extra || {}) as { useMockData?: boolean; EXPO_PUBLIC_USE_API?: string };
-    const useApi = 
-      String(process.env.EXPO_PUBLIC_USE_API || '').toLowerCase() === 'true' ||
-      String(extra.EXPO_PUBLIC_USE_API || '').toLowerCase() === 'true';
+
+    
+    const extra = (Constants.expoConfig?.extra || {}) as { useMockData?: boolean };
 
     const unsub: Unsub =
       extra.useMockData ? useMockEmployees(setList)
-      : useApi         ? useApiEmployees(setList)
-                       : useDbEmployees(setList);
+      : USE_API         ? useApiEmployees(setList)
+                        : useDbEmployees(setList);
 
     return () => unsub?.();
   }, []);

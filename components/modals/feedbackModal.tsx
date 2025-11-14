@@ -107,7 +107,7 @@ export default function FeedbackModal({
             {[1, 2, 3, 4, 5].map((rating) => (
               <Pressable
                 key={rating}
-                style={[
+                style={({ pressed }) => [
                   styles.ratingButton,
                   {
                     borderColor: getRatingColor(rating as FeedbackRating),
@@ -115,6 +115,7 @@ export default function FeedbackModal({
                       ? getRatingColor(rating as FeedbackRating)
                       : 'transparent',
                   },
+                  pressed && styles.ratingButtonPressed
                 ]}
                 onPress={() => handleRatingSelect(rating as FeedbackRating)}
               >
@@ -136,9 +137,10 @@ export default function FeedbackModal({
 
           {/* Submit Button */}
           <Pressable
-            style={[
+            style={({ pressed }) => [
               styles.submitButton,
-              !selectedRating && styles.submitButtonDisabled
+              !selectedRating && styles.submitButtonDisabled,
+              pressed && selectedRating && styles.submitButtonPressed
             ]}
             onPress={handleSubmit}
             disabled={!selectedRating}
@@ -228,6 +230,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden', // Ensure content doesn't shift
   },
+  ratingButtonPressed: {
+    opacity: 0.7,
+  },
   ratingText: {
     fontSize: 18,
     fontWeight: '600',
@@ -242,6 +247,9 @@ const styles = StyleSheet.create({
     marginTop: 24,
     width: '100%',
     alignItems: 'center',
+  },
+  submitButtonPressed: {
+    opacity: 0.7,
   },
   submitButtonDisabled: {
     backgroundColor: colours.bg.subtle,

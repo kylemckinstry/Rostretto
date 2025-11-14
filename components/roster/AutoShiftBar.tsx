@@ -12,9 +12,20 @@ export default function AutoShiftBar({ onPress, floating, bottom }: Props) {
     ? [styles.wrap, styles.floating, bottom != null ? { bottom } : null]
     : styles.wrap;
 
+  const handlePress = () => {
+    console.log('[AutoShiftBar] Button pressed!');
+    onPress();
+  };
+
   return (
     <View style={wrapStyle} pointerEvents="box-none">
-      <Pressable onPress={onPress} style={styles.btn}>
+      <Pressable 
+        onPress={handlePress} 
+        style={({ pressed }) => [
+          styles.btn,
+          pressed && styles.btnPressed
+        ]}
+      >
         <Text style={styles.text}>Auto Shift</Text>
       </Pressable>
     </View>
@@ -39,6 +50,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 4,
+  },
+  btnPressed: {
+    backgroundColor: '#2a5a47',
+    opacity: 0.8,
   },
   text: { color: '#fff', fontWeight: '700' },
 });

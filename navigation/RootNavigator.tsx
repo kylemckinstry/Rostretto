@@ -11,6 +11,7 @@ import CapabilitiesNavigator from './CapabilitiesNavigator';
 import FairnessScreen from '../screens/FairnessScreen';
 import EmployeeScreen from '../screens/EmployeeScreen';
 import FeedbackScreen from '../screens/FeedbackScreen';
+import DebugScreen from '../screens/DebugScreen';
 import { colours } from '../theme/colours';
 
 // SVG icons for tab navigation
@@ -38,11 +39,16 @@ function CustomHeader() {
 }
 
 function Tabs() {
+  const insets = useSafeAreaInsets();
+  
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarStyle: Platform.OS === 'web' ? { display: 'none' } : undefined,
+        tabBarStyle: Platform.OS === 'web' ? { display: 'none' } : {
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
+          height: 60 + (insets.bottom > 0 ? insets.bottom : 8),
+        },
         tabBarActiveTintColor: colours.brand.primary,
         tabBarInactiveTintColor: colours.text.muted,
         tabBarItemStyle: { paddingHorizontal: 8, paddingVertical: 4 },
@@ -78,6 +84,7 @@ function Tabs() {
         })}
       />
       <Tab.Screen name="Fairness" component={FairnessScreen} />
+      <Tab.Screen name="Debug" component={DebugScreen} />
     </Tab.Navigator>
   );
 }

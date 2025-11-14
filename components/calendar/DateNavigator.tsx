@@ -14,13 +14,25 @@ function DateNavigator({
 }) {
   return (
     <View style={s.wrap}>
-      <Pressable onPress={onPrev} style={s.chevronBox}>
+      <Pressable 
+        onPress={onPrev} 
+        style={({ pressed }) => [
+          s.chevronBox,
+          pressed && s.chevronBoxPressed
+        ]}
+      >
         <Text style={s.chev}>{'<'}</Text>
       </Pressable>
 
       <Text style={s.title}>{label}</Text>
 
-      <Pressable onPress={onNext} style={s.chevronBox}>
+      <Pressable 
+        onPress={onNext} 
+        style={({ pressed }) => [
+          s.chevronBox,
+          pressed && s.chevronBoxPressed
+        ]}
+      >
         <Text style={s.chev}>{'>'}</Text>
       </Pressable>
     </View>
@@ -41,6 +53,9 @@ const s = StyleSheet.create({
   },
   title: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
   chevronBox: { padding: 8, alignItems: 'center', justifyContent: 'center' },
+  chevronBoxPressed: {
+    opacity: 0.5,
+  },
   chev: {
     fontSize: 14,
     width: 28,

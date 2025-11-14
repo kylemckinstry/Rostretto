@@ -1,30 +1,56 @@
 // api/client.ts
 import Constants from 'expo-constants';
 
-const fromEnv = process.env.EXPO_PUBLIC_API_BASE_URL as string | undefined;
-const fromExtra = Constants.expoConfig?.extra?.EXPO_PUBLIC_API_BASE_URL as string | undefined;
-export const API_BASE = (fromEnv || fromExtra || 'http://localhost:5057').replace(/\/+$/, '');
+const expoConfig = Constants.expoConfig ?? ({} as any);
+const extra = (expoConfig.extra ?? {}) as {
+  EXPO_PUBLIC_API_BASE_URL?: string;
+  EXPO_PUBLIC_USE_API?: boolean | string;
+};
+
+// Fallback to Cloud Run if extra not loaded correctly
+export const API_BASE =
+  extra.EXPO_PUBLIC_API_BASE_URL ??
+  'https://rostretto-scheduler-127031505005.australia-southeast1.run.app';
+
+// Compute USE_API from extra with sane defaults
+export const USE_API =
+  typeof extra.EXPO_PUBLIC_USE_API === 'boolean'
+    ? extra.EXPO_PUBLIC_USE_API
+    : extra.EXPO_PUBLIC_USE_API === 'true' ||
+      extra.EXPO_PUBLIC_USE_API === undefined;
+
+
 
 async function http<T>(path: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE}${path.startsWith('/') ? '' : '/'}${path}`;
-  console.log('FETCH →', url);
-  const res = await fetch(url, {
-    mode: 'cors',
-    credentials: 'omit',
-    cache: 'no-store',
-    headers: { 
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      ...(options.headers || {}) 
-    },
-    ...options,
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`${res.status} ${res.statusText} – ${text}`);
+
+  
+  try {
+    const res = await fetch(url, {
+      mode: 'cors',
+      credentials: 'omit',
+      cache: 'no-store',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        ...(options.headers || {}) 
+      },
+      ...options,
+    });
+    
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      console.error('[API] Error response:', text);
+      throw new Error(`${res.status} ${res.statusText} – ${text}`);
+    }
+    
+    const data = await res.json() as Promise<T>;
+    return data;
+  } catch (error) {
+    console.error('[API] Fetch error:', error);
+    throw error;
   }
-  return res.json() as Promise<T>;
 }
 
 /** ===== Types that reflect the backend ===== */

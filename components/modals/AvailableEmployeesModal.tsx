@@ -31,6 +31,8 @@ type Props = {
   isEmployeeAssigned?: (employeeName: string, start: string, end: string) => boolean;
 };
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 export default function AvailableEmployeesModal({
   visible,
   onClose,
@@ -39,6 +41,7 @@ export default function AvailableEmployeesModal({
   onAssign,
   isEmployeeAssigned,
 }: Props) {
+  const insets = useSafeAreaInsets();
   const employees = useEmployeesUI(); // UIEmployee[]
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
   const [byIdTimes, setByIdTimes] = React.useState<Record<string, { start: string; end: string; role: string }>>(
@@ -60,15 +63,15 @@ export default function AvailableEmployeesModal({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={s.header}>
-        <View style={{ width: 24 }} />
-        <Text style={s.title}>Available Staff</Text>
-        <Pressable onPress={onClose} style={s.closeButton} hitSlop={8}>
-          <Text style={s.closeText}>×</Text>
-        </Pressable>
-      </View>
+      <View style={[s.container, { paddingTop: insets.top || 44 }]}>
+        <View style={s.header}>
+          <View style={{ width: 24 }} />
+          <Text style={s.title}>Available Staff</Text>
+          <Pressable onPress={onClose} style={s.closeButton} hitSlop={8}>
+            <Text style={s.closeText}>×</Text>
+          </Pressable>
+        </View>
 
-      <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
         <View style={s.columns}>
           <Text style={s.colHead}>Name</Text>
           <Text style={s.colHead}>Score</Text>
@@ -77,7 +80,8 @@ export default function AvailableEmployeesModal({
         <FlatList<UIEmployee>
           data={employees}
           keyExtractor={(e) => e.id}
-          contentContainerStyle={{ gap: 12, paddingBottom: 40 }}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ gap: 12, paddingHorizontal: 16, paddingBottom: insets.bottom + 20 }}
           renderItem={({ item }) => {
             const name = item.name;
             const score = Math.round(item.score ?? 0); // UIEmployee already 0..100
@@ -213,7 +217,11 @@ export default function AvailableEmployeesModal({
                             role: times.role,
                           })
                         }
-                        style={[s.assignBtn, hasOverlap && s.assignBtnDisabled]}
+                        style={({ pressed }) => [
+                          s.assignBtn,
+                          hasOverlap && s.assignBtnDisabled,
+                          pressed && !hasOverlap && s.assignBtnPressed
+                        ]}
                         disabled={hasOverlap}
                       >
                         <Text style={[s.assignBtnText, hasOverlap && s.assignBtnTextDisabled]}>
@@ -235,6 +243,10 @@ export default function AvailableEmployeesModal({
 
 
 const s = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colours.bg.canvas,
+  },
   header: {
     paddingHorizontal: 16,
     paddingTop: 12,
@@ -242,13 +254,15 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    backgroundColor: colours.bg.canvas,
   },
   title: { fontSize: 18, fontWeight: '800', color: '#1A4331' },
   columns: {
-    paddingHorizontal: 4,
+    paddingHorizontal: 20,
     paddingVertical: 8,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    backgroundColor: colours.bg.canvas,
   },
   colHead: { color: '#2D2D2D', fontWeight: '700' },
 
@@ -306,6 +320,10 @@ const s = StyleSheet.create({
     borderRadius: 10,
     marginTop: 8,
     alignItems: 'center',
+  },
+  assignBtnPressed: {
+    backgroundColor: '#2a5a47',
+    opacity: 0.8,
   },
   assignBtnText: { color: '#FFFFFF', fontWeight: '800', fontSize: 17 },
   assignBtnDisabled: {

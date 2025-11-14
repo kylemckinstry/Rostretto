@@ -19,6 +19,7 @@ import TrafficIcon from '../assets/traffic.svg';
 
 import { addWeeks, startOfWeek, addDays, isSameDay, weekRangeLabel, dayLabelLong } from '../utils/date';
 import { DayIndicators, Employee } from '../state/types';
+import { USE_API } from '../api/client';
 import { UIEmployee, useEmployeesUI } from '../viewmodels/employees';
 import { TimeSlotData, StaffAssignment } from '../components/roster/TimeSlot';
 import { colours } from '../theme/colours';
@@ -32,11 +33,9 @@ import { buildDaySlots } from '../viewmodels/schedule';
 import { api } from '../api/client';
 import Constants from 'expo-constants';
 
-// Runtime feature flag
-const USE_API =
-  (typeof process !== 'undefined' && (process as any).env?.EXPO_PUBLIC_USE_API === 'true') ||
-  (Constants.expoConfig?.extra?.EXPO_PUBLIC_USE_API === 'true') ||
-  (typeof window !== 'undefined' && (window as any).__USE_API__ === true);
+
+
+
 
 const PADDED_WRAPPER = { paddingHorizontal: 16 };
 const HEADER_GROUP = { backgroundColor: colours.bg.lightGreen, borderRadius: 16, paddingHorizontal: 12, paddingVertical: 10, marginTop: 16, marginBottom: 4 };
@@ -287,11 +286,14 @@ export default function SchedulerScreen() {
 
   // Auto Shift for entire week (called from week view button)
   async function runAutoScheduleWeek() {
-    if (!USE_API) return;
+    if (!USE_API) {
+      Alert.alert('Error', 'API is not enabled');
+      return;
+    }
     
     setIsScheduling(true);
     try {
-      await api.runSchedule(weekId);
+      const result = await api.runSchedule(weekId);
 
       // Fetch updated bundle to get the new assignments
       const bundle = await fetchWeekBundle(weekId);
@@ -333,7 +335,8 @@ export default function SchedulerScreen() {
       const weekRange = `${months[weekStart.getMonth()]} ${weekStart.getDate()} - ${months[weekEnd.getMonth()]} ${weekEnd.getDate()}`;
       Alert.alert('Success', `Schedule created for ${weekRange}: ${bundle.assignments.length} assignments`);
     } catch (e: any) {
-      console.warn(e);
+      console.error('[runAutoScheduleWeek] Error:', e);
+      console.error('[runAutoScheduleWeek] Error details:', JSON.stringify(e, null, 2));
       const errorMsg = e?.message ?? String(e);
       if (errorMsg.includes('No shifts found')) {
         Alert.alert('Error', `Cannot schedule week: No shifts exist for this week. Please create shifts in the database first.`);
@@ -347,14 +350,19 @@ export default function SchedulerScreen() {
 
   // Auto Shift for current day only (called from day view button)
   async function runAutoScheduleDay() {
-    if (!USE_API) return;
+    if (!USE_API) {
+
+      Alert.alert('Error', 'API is not enabled');
+      return;
+    }
     
     setIsScheduling(true);
     try {
       const dayKey = mkKey(anchorDate);
       
-      // Call the day-specific scheduling endpoint
-      await api.runDaySchedule(weekId, dayKey);
+
+      const result = await api.runDaySchedule(weekId, dayKey);
+
 
       // Fetch updated bundle to get the new assignments
       const bundle = await fetchWeekBundle(weekId);
@@ -394,7 +402,8 @@ export default function SchedulerScreen() {
       const formattedDate = `${wd}, ${anchorDate.getDate()} ${m}`;
       Alert.alert('Success', `${formattedDate} scheduled successfully`);
     } catch (e: any) {
-      console.warn(e);
+      console.error('[runAutoScheduleDay] Error:', e);
+      console.error('[runAutoScheduleDay] Error details:', JSON.stringify(e, null, 2));
       const errorMsg = e?.message ?? String(e);
       Alert.alert('Error', `Scheduling error: ${errorMsg}`);
     } finally {
@@ -403,7 +412,11 @@ export default function SchedulerScreen() {
   }
 
   const handleAssign = ({ employee, start, end, role }: { employee: UIEmployee; start: string; end: string; role?: string }) => {
-    if (!USE_API) return;
+    if (!USE_API) {
+
+      Alert.alert('Error', 'API is not enabled');
+      return;
+    }
     
     const name = employee.name || `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || 'Unknown';
     const assignedRole = role || roleToDisplayName(employee.primary_role);
@@ -433,12 +446,21 @@ export default function SchedulerScreen() {
     // Save to backend immediately
     (async () => {
       try {
-        if (!weekBundle) return;
+
+        if (!weekBundle) {
+
+          return;
+        }
         const dayKey = mkKey(anchorDate);
         const dayShifts = weekBundle.shifts.filter(s => s.date === dayKey);
-        if (dayShifts.length === 0) return;
+        if (dayShifts.length === 0) {
+
+          return;
+        }
 
         const shift = dayShifts[0];
+        
+
 
         await api.saveManualAssignment({
           week: weekId,
@@ -448,6 +470,8 @@ export default function SchedulerScreen() {
           start_time: start,
           end_time: end,
         });
+        
+
         
         // Refresh bundle to get updated state
         const bundle = await fetchWeekBundle(weekId);
@@ -480,6 +504,7 @@ export default function SchedulerScreen() {
         setWeekDaysLive(tiles);
       } catch (e) {
         console.error('[handleAssign] Failed to save to backend:', e);
+        console.error('[handleAssign] Error details:', JSON.stringify(e, null, 2));
         Alert.alert('Error', 'Failed to save assignment. Please try again.');
       }
     })();

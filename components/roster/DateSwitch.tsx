@@ -20,12 +20,13 @@ export default function DateSwitch({
   const toggleWidth = screenWidth * 0.92;
 
   // Choose button appearance based on selection
-  const getStyle = (currentGranularity: 'weekly' | 'daily') => {
+  const getStyle = (currentGranularity: 'weekly' | 'daily', pressed: boolean) => {
     const isActive = granularity === currentGranularity;
     return [
       s.toggle,
       // Override background to ensure correct colour
       { backgroundColor: isActive ? ACTIVE_BG : INACTIVE_BG },
+      pressed && !isActive && s.togglePressed,
     ];
   };
 
@@ -33,7 +34,7 @@ export default function DateSwitch({
     <View style={[s.wrap, fluid ? { width: '100%' } : { width: toggleWidth }]}>
       <Pressable
         onPress={() => onGranularityChange('daily')}
-        style={getStyle('daily')} // Get styling for daily button
+        style={({ pressed }) => getStyle('daily', pressed)} // Get styling for daily button
         android_ripple={{ color: '#e0f2fe' }}
       >
         <Text style={[s.toggleText, granularity === 'daily' && s.toggleTextActive]}>
@@ -43,7 +44,7 @@ export default function DateSwitch({
 
       <Pressable
         onPress={() => onGranularityChange('weekly')}
-        style={getStyle('weekly')} // Get styling for weekly button
+        style={({ pressed }) => getStyle('weekly', pressed)} // Get styling for weekly button
         android_ripple={{ color: '#e0f2fe' }}
       >
         <Text style={[s.toggleText, granularity === 'weekly' && s.toggleTextActive]}>
@@ -70,6 +71,9 @@ const s = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: 10,
+  },
+  togglePressed: {
+    opacity: 0.7,
   },
   toggleText: {
     color: '#475569',
